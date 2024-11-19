@@ -1,0 +1,35 @@
+services:
+  blaze:
+    image: docker.io/samply/blaze:0.29.3@sha256:47527f478ef2ddf932f4e5c882c0266ac179d7a2fc37ed66868d079698541da3
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx64g"
+      BASE_URL: "http://localhost:8083"
+    volumes:
+      - "blaze-data:/app/data"
+    ports:
+      - "127.0.0.1:8083:8080"
+
+  wait-for-blaze:
+    image: docker.io/curlimages/curl:8.8.0@sha256:73e4d532ea62d7505c5865b517d3704966ffe916609bedc22af6833dc9969bcd
+    ipc: none
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - ALL
+    privileged: false
+    restart: "no"
+    environment:
+      BLAZE_SERVER_URL: http://blaze:8080
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until [ "$(curl -s -o /dev/null -L -w "%{http_code}" "$$BLAZE_SERVER_URL/fhir/metadata")" == "200" ]; do
+            echo "$(date): Waiting for blaze server @ $$BLAZE_SERVER_URL to be up";
+            sleep 5;
+        done;
+    depends_on:
+      blaze:
+        condition: service_started
+
+volumes:
+  blaze-data: {}

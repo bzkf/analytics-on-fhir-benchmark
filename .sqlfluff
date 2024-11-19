@@ -1,0 +1,8 @@
+[sqlfluff]
+dialect = trino
+max_line_length = 120
+# RF01 doesn't really work with structs.
+exclude_rules = RF01
+
+[sqlfluff:rules:capitalisation.identifiers]
+extended_capitalisation_policy = lower
