@@ -1,4 +1,5 @@
 import datetime
+import os
 import time
 from pathling import PathlingContext, Expression as exp
 from pyspark.sql import SparkSession, DataFrame
@@ -29,7 +30,7 @@ class PathlingBenchmark(Benchmark):
             )
             .config(
                 "spark.driver.memory",
-                "64g",
+                os.getenv("SPARK_DRIVER_MEMORY", "64g"),
             )
             .config(
                 "spark.hadoop.fs.s3a.endpoint",

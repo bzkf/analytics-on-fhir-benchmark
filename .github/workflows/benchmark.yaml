@@ -22,6 +22,8 @@ jobs:
           version: "3.38.0"
 
       - name: Run benchmark
+        env:
+          SPARK_DRIVER_MEMORY: "8g"
         run: |
           task run
 
