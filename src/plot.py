@@ -5,6 +5,7 @@ from loguru import logger
 
 from benchmark import QueryType
 
+
 def compute_relative_duration(group):
     # Find the duration for the FHIR-PYrate engine as the reference
     reference_row = group[group["engine"] == "FHIR-PYrate"]
@@ -16,6 +17,7 @@ def compute_relative_duration(group):
     # Calculate relative duration by dividing each duration by the reference
     group["relative_duration"] = reference_duration / group["total_duration_seconds"]
     return group
+
 
 df = pd.DataFrame()
 
@@ -77,6 +79,8 @@ logger.info(means_largest_record_count)
 relative_data = means_largest_record_count.groupby(["query", "query_type"]).apply(
     compute_relative_duration
 )
+
+relative_data.reset_index(drop=True, inplace=True)
 
 # Sort and display
 relative_data = relative_data.sort_values(by=["query", "query_type", "engine"])
@@ -142,11 +146,32 @@ for query_type in [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
             ax.text(
                 p.get_x(),
                 p.get_height() * 1.3,
-                "{0:.1f}".format(p.get_height()),  # Used to format it K representation
+                "{0:.1f}".format(p.get_height()),
                 color="black",
                 rotation="horizontal",
                 size="small",
             )
+
+        for bar, error_line in zip(ax.patches, ax.lines):
+            # Extract bar and error bar positions
+            x = bar.get_x() + bar.get_width() / 2
+            y = bar.get_height()
+
+            # Extract CI from error bars
+            error_y = error_line.get_ydata()
+            ci_lower, ci_upper = error_y[0], error_y[-1]
+
+            # Format the CI label
+            ci_label = f"({ci_lower:.1f}, {ci_upper:.1f})"
+            # ax.text(
+            #     x,
+            #     y * 1.05,
+            #     ci_label,
+            #     ha="center",
+            #     va="bottom",
+            #     color="black",
+            #     size="small",
+            # )
 
     g.figure.savefig(
         output_dir / query_type_str / "duration-by-resource-count-facetted-by-query.png"
