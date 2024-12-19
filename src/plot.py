@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import pandas as pd
 import seaborn as sns
@@ -58,40 +59,42 @@ logger.info(df.dtypes)
 results_dir = Path.cwd() / "results"
 results_dir.mkdir(parents=True, exist_ok=True)
 
-# this results in some NA values in the means since `observations-by-code` is
-# only used in the `aggregate` scenario and in turn all other scenarios
-# are not ran against the `observations-by-code` query.
-df[df["record_count_categorical"] == 100000].groupby(
-    ["engine", "query_type", "query", "record_count_categorical"]
-)["total_duration_seconds"].mean().dropna().drop(
-    columns=("record_count_categorical")
-).to_csv(
-    results_dir / "summary-largest-record-count.csv"
-)
+# added to make it work in the GitHub workflow that only uses a much smaller record size
+if not os.getenv("SKIP_RELATIVE_PERFORMANCE_COMPARISON", False):
+    # this results in some NA values in the means since `observations-by-code` is
+    # only used in the `aggregate` scenario and in turn all other scenarios
+    # are not ran against the `observations-by-code` query.
+    df[df["record_count_categorical"] == 100000].groupby(
+        ["engine", "query_type", "query", "record_count_categorical"]
+    )["total_duration_seconds"].mean().dropna().drop(
+        columns=("record_count_categorical")
+    ).to_csv(
+        results_dir / "summary-largest-record-count.csv"
+    )
 
-means_largest_record_count = pd.read_csv(
-    results_dir / "summary-largest-record-count.csv"
-)
+    means_largest_record_count = pd.read_csv(
+        results_dir / "summary-largest-record-count.csv"
+    )
 
-logger.info(means_largest_record_count)
+    logger.info(means_largest_record_count)
 
-# Apply the function to each (query, query_type) group
-relative_data = means_largest_record_count.groupby(["query", "query_type"]).apply(
-    compute_relative_duration
-)
+    # Apply the function to each (query, query_type) group
+    relative_data = means_largest_record_count.groupby(["query", "query_type"]).apply(
+        compute_relative_duration
+    )
 
-relative_data.reset_index(drop=True, inplace=True)
+    # Sort and display
+    relative_data = relative_data.sort_values(by=["query", "query_type", "engine"])
 
-# Sort and display
-relative_data = relative_data.sort_values(by=["query", "query_type", "engine"])
+    logger.info(relative_data)
 
-logger.info(relative_data)
+    mean_relative_performance = (
+        relative_data.groupby(["engine", "query_type"])["relative_duration"]
+        .mean()
+        .dropna()
+    )
 
-mean_relative_performance = (
-    relative_data.groupby(["engine", "query_type"])["relative_duration"].mean().dropna()
-)
-
-logger.info(mean_relative_performance)
+    logger.info(mean_relative_performance)
 
 output_dir = results_dir / "plots"
 output_dir.mkdir(parents=True, exist_ok=True)

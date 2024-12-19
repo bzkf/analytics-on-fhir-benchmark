@@ -27,6 +27,7 @@ jobs:
       - name: Run benchmark
         env:
           SPARK_DRIVER_MEMORY: "8g"
+          SKIP_RELATIVE_PERFORMANCE_COMPARISON: "True"
         run: |
           task run
 
