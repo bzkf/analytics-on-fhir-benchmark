@@ -45,7 +45,7 @@ tasks:
       # hospitalInformation & practitionerInformation are required for referential integrity.
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8083/fhir'
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8083/fhir'
-      - ./blazectl upload --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8083/fhir
+      - ./blazectl upload --no-progress --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8083/fhir
       # hapi fhir jpa
       # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find output/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8084/fhir'
       # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find output/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8084/fhir'
