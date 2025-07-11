@@ -1,6 +1,6 @@
 services:
   warehousekeeper:
-    image: ghcr.io/miracum/util-images/warehousekeeper:v0.1.7@sha256:1487804b409e0f85a1b6e89b7bdd5dd89b730dfc41e2348fbde0810c9f3ea00a
+    image: ghcr.io/miracum/util-images/warehousekeeper:v0.1.13
     ipc: none
     security_opt:
       - "no-new-privileges:true"
@@ -11,12 +11,13 @@ services:
     environment:
       AWS_ALLOW_HTTP: "1"
       AWS_REGION: "eu-central-1"
-      AWS_ENDPOINT_URL: "http://minio:9000"
-      AWS_ACCESS_KEY_ID: "admin"
-      AWS_SECRET_ACCESS_KEY: "miniopass"
+      AWS_ENDPOINT_URL: "https://nbg1.your-objectstorage.com/"
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        python3 /opt/warehousekeeper/warehousekeeper.py vacuum   --bucket-name=fhir --database-name-prefix=default/ --retention-hours=0 --dry-run=false --enforce-retention-duration=false
+        python3 /opt/warehousekeeper/warehousekeeper.py optimize --bucket-name=analytics-on-fhir --database-name-prefix=warehouse/default/ --use-delta-rs=false
+        python3 /opt/warehousekeeper/warehousekeeper.py vacuum   --bucket-name=analytics-on-fhir --database-name-prefix=warehouse/default/ --use-delta-rs=false --retention-hours=0 --dry-run=false --enforce-retention-duration=false
     volumes:
       - $PWD/config/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro

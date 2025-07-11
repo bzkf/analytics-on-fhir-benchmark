@@ -2,7 +2,7 @@
 <configuration>
     <property>
         <name>hive.metastore.warehouse.dir</name>
-        <value>s3a://fhir/metastore</value>
+        <value>s3a://analytics-on-fhir/metastore</value>
     </property>
     <property>
         <name>fs.s3.impl</name>
@@ -14,7 +14,7 @@
     </property>
     <property>
         <name>fs.s3a.endpoint</name>
-        <value>http://minio:9000</value>
+        <value>https://nbg1.your-objectstorage.com/</value>
     </property>
     <property>
         <name>fs.s3a.path.style.access</name>

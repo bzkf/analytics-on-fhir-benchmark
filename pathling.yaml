@@ -1,0 +1,43 @@
+services:
+  pathling:
+    image: docker.io/aehrc/pathling:7.2.0
+    ipc: none
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - ALL
+    privileged: false
+    environment:
+      JAVA_TOOL_OPTIONS: |
+        -Xmx72g
+        -Xss64m
+        -XX:G1HeapRegionSize=32M
+        -XX:+ExplicitGCInvokesConcurrent
+        -XX:+ExitOnOutOfMemoryError
+        -XX:+HeapDumpOnOutOfMemoryError
+        -Duser.timezone=UTC
+        --add-exports=java.base/sun.nio.ch=ALL-UNNAMED
+        --add-opens=java.base/java.net=ALL-UNNAMED
+        --add-opens=java.base/java.nio=ALL-UNNAMED
+        --add-opens=java.base/java.util=ALL-UNNAMED
+        --add-opens=java.base/java.lang.invoke=ALL-UNNAMED
+      pathling.storage.warehouseUrl: s3a://analytics-on-fhir/warehouse/
+      pathling.storage.cacheDatasets: "false"
+      pathling.query.cacheResults: "false"
+      pathling.import.allowableSources: s3a://analytics-on-fhir/synthea-import/
+      pathling.terminology.enabled: "false"
+      pathling.terminology.serverUrl: http://localhost:8080/i-dont-exist
+      fs.s3a.endpoint: "https://nbg1.your-objectstorage.com/"
+      fs.s3a.access.key: ${AWS_ACCESS_KEY_ID:?}
+      fs.s3a.secret.key:  ${AWS_SECRET_ACCESS_KEY:?}
+      fs.s3a.impl: "org.apache.hadoop.fs.s3a.S3AFileSystem"
+      fs.s3a.path.style.access: "true"
+      spark.sql.parquet.compression.codec: "zstd"
+      spark.io.compression.codec: "zstd"
+      parquet.compression.codec.zstd.level: "9"
+      spark.serializer: "org.apache.spark.serializer.KryoSerializer"
+      spark.master: "local[*]"
+      spark.driver.memory: 64g
+    ports:
+      - "127.0.0.1:8082:8080"
+      - "127.0.0.1:4040:4040"

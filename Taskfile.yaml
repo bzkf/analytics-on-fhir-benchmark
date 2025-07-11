@@ -16,7 +16,7 @@ tasks:
   install-dependencies:
     cmds:
       - curl -LO https://github.com/synthetichealth/synthea/releases/download/master-branch-latest/synthea-with-dependencies.jar
-      - curl -LO https://repo1.maven.org/maven2/io/trino/trino-cli/453/trino-cli-453-executable.jar
+      - curl -LO https://repo1.maven.org/maven2/io/trino/trino-cli/476/trino-cli-476-executable.jar
       - curl -LO https://github.com/samply/blazectl/releases/download/v0.16.0/blazectl-0.16.0-linux-amd64.tar.gz
       - tar xzf blazectl-0.16.0-linux-amd64.tar.gz
       - rm blazectl-0.16.0-linux-amd64.tar.gz
@@ -25,7 +25,7 @@ tasks:
     generates:
       - synthea-with-dependencies.jar
       - blazectl
-      - trino-cli-453-executable.jar
+      - trino-cli-476-executable.jar
 
   # TODO: could use a task loop to generate synthea data for all sizes at once.
   generate-fhir-data:
