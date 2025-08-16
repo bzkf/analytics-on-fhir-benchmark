@@ -1,5 +1,5 @@
 fhir-pyrate==0.2.1
-trino==0.329.0
+trino==0.336.0
 sqlfluff==3.1.0
 pathling==7.0.1
 loguru==0.7.2

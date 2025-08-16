@@ -5,6 +5,7 @@
 ```sh
 git clone https://github.com/bzkf/analytics-on-fhir-benchmark.git
 cd analytics-on-fhir-benchmark/
+source .venv/bin/activate
 ./setup.sh
 
 task run
