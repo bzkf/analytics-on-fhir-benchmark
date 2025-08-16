@@ -12,7 +12,7 @@ from pathling_benchmark import PathlingBenchmark
 from pyrate_benchmark import PyrateBenchmark
 from trino_benchmark import TrinoBenchmark
 
-NUM_RUNS_PER_ENGINE: int = 5
+NUM_RUNS_PER_ENGINE: int = 10
 
 
 def main() -> int:
@@ -49,7 +49,7 @@ def main() -> int:
         )
 
         # trino
-        trino_results = trino.run_all_queries(run_id=str(i))
+        trino_results = trino.run_all_queries(run_id=i)
         results = pd.concat([results, pd.DataFrame(trino_results)])
         docker_client.containers.get("analytics-on-fhir-benchmark-minio-1").restart()
         docker_client.containers.get("analytics-on-fhir-benchmark-trino-1").restart()
@@ -64,7 +64,7 @@ def main() -> int:
         retry_count = 0
         while retry_count < max_retries:
             try:
-                pathling_results = pathling.run_all_queries(run_id=str(i))
+                pathling_results = pathling.run_all_queries(run_id=i)
                 results = pd.concat([results, pd.DataFrame(pathling_results)])
                 pathling.reset()
                 break
@@ -82,7 +82,7 @@ def main() -> int:
         time.sleep(30)
 
         # pyrate
-        pyrate_results = pyrate.run_all_queries(run_id=str(i))
+        pyrate_results = pyrate.run_all_queries(run_id=i)
         results = pd.concat([results, pd.DataFrame(pyrate_results)])
         docker_client.containers.get("analytics-on-fhir-benchmark-blaze-1").restart()
         gc.collect()

@@ -19,7 +19,7 @@ class TrinoBenchmark(Benchmark):
         )
         logger.info("Completed initialization.")
 
-    def run_all_queries(self, run_id: str) -> list[BenchmarkRunResult]:
+    def run_all_queries(self, run_id: int) -> list[BenchmarkRunResult]:
         logger.info("Begin trino benchmarking")
         queries_base_path = Path.cwd() / "queries"
 
@@ -33,7 +33,11 @@ class TrinoBenchmark(Benchmark):
                 queries_dir_path=queries_dir_path,
             )
 
-            for file in queries_dir_path.glob("*.sql"):
+            queries = list(queries_dir_path.glob("*.sql"))
+            start = run_id % len(queries)
+            round_robin_queries = queries[start:] + queries[:start]
+
+            for file in round_robin_queries:
                 query_name = file.stem
                 logger.info(
                     "Running {query_type} query {query_name}",

@@ -26,7 +26,7 @@ class PyrateBenchmark(Benchmark):
         )
         logger.info("Completed initialization.")
 
-    def run_all_queries(self, run_id: str) -> list[BenchmarkRunResult]:
+    def run_all_queries(self, run_id: int) -> list[BenchmarkRunResult]:
         output_folder_base = Path.cwd() / "results" / "pyrate"
 
         results = []
@@ -185,7 +185,11 @@ class PyrateBenchmark(Benchmark):
             output_folder = output_folder_base / str(query_type)
             output_folder.mkdir(parents=True, exist_ok=True)
 
-            for query in queries[query_type]:
+            queries_of_type = queries[query_type]
+            start = run_id % len(queries_of_type)
+            round_robin_queries = queries_of_type[start:] + queries_of_type[:start]
+
+            for query in round_robin_queries:
                 query_name = query["query_name"]
                 logger.info(
                     "Running {query_type} query {query_name}",

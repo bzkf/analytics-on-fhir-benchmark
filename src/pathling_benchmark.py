@@ -176,7 +176,11 @@ class PathlingBenchmark(Benchmark):
             output_folder = output_folder_base / str(query_type)
             output_folder.mkdir(parents=True, exist_ok=True)
 
-            for query in queries[query_type]:
+            queries_of_type = queries[query_type]
+            start = run_id % len(queries_of_type)
+            round_robin_queries = queries_of_type[start:] + queries_of_type[:start]
+
+            for query in round_robin_queries:
                 query_name = query["query_name"]
                 logger.info(
                     "Running {query_type} query {query_name}",
