@@ -19,7 +19,7 @@ class PathlingBenchmark(Benchmark):
         spark = (
             SparkSession.builder.config(
                 "spark.jars.packages",
-                "au.csiro.pathling:library-runtime:7.0.1,io.delta:delta-spark_2.12:3.2.0,org.apache.hadoop:hadoop-aws:3.3.4",
+                "au.csiro.pathling:library-runtime:7.2.0,io.delta:delta-spark_2.12:3.3.0,org.apache.hadoop:hadoop-aws:3.3.4",
             )
             .config("fs.s3a.access.key", "admin")
             .config("fs.s3a.secret.key", "miniopass")

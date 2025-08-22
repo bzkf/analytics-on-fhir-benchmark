@@ -12,6 +12,7 @@ class QueryType(Enum):
     def __str__(self):
         return str(self.value).lower()
 
+
 class QueryEngine(Enum):
     PATHLING = "pathling"
     PYRATE = "pyrate"

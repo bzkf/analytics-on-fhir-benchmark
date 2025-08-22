@@ -110,6 +110,14 @@ for query_type in [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
 
     df = df_original[df_original["query_type"] == query_type_str]
 
+    p95 = (
+        df.groupby(["engine", "query", "record_count_categorical"])[
+            "total_duration_seconds"
+        ]
+        .quantile(0.95)
+        .reset_index(name="p95_duration_seconds")
+    )
+
     col_order = ["gender-age", "diabetes", "hemoglobin"]
     titles = "{col_name}"
     col_wrap = 2
@@ -130,25 +138,44 @@ for query_type in [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
         errorbar=("ci", 95),
         col_order=col_order,
         err_kws={"color": ".1", "linewidth": 1},
-        capsize=0.2,
+        capsize=0.3,
     )
-
-    if query_type != QueryType.AGGREGATE:
-        sns.move_legend(g, "upper left", bbox_to_anchor=(0.05, 0.85), frameon=False)
 
     g.legend.set_title("Query Engine")
     g.set_titles(titles)
     g.set_axis_labels("Record Count", "Mean duration (seconds)")
+
+    # Pick any axis (e.g., first facet)
+    ax = g.axes.flat[0]
+
+    # Create a dummy scatter for the legend
+    scatter_for_legend = ax.scatter(
+        [], [], facecolors="red", marker="+", label="p95 latency"
+    )
+
+    g.figure.legend(
+        handles=[scatter_for_legend],
+        labels=["P95 Duration"],
+        title="Auxiliary Metrics",
+        loc="center right",  # relative to the figure
+        bbox_to_anchor=(1, 0.35),  # move outside the figure (x > 1)
+        frameon=False,
+    )
 
     for facet in g.axes_dict.keys():
         ax = g.axes_dict[facet]
         logger.info("{facet}, {ax}", facet=facet, ax=ax)
         ax.set_yscale("log")
 
+        d = p95[p95["query"] == facet]
+
+        handles, labels = ax.get_legend_handles_labels()
+
         for p in ax.patches:
+            height_multiplier = 1.9 if query_type == QueryType.COUNT else 1.65
             ax.text(
                 p.get_x(),
-                p.get_height() * 1.3,
+                p.get_height() * height_multiplier,
                 "{0:.1f}".format(p.get_height()),
                 color="black",
                 rotation="horizontal",
@@ -175,6 +202,12 @@ for query_type in [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
             #     color="black",
             #     size="small",
             # )
+
+        for bar, (_, row) in zip(ax.patches, d.iterrows()):
+            x = bar.get_x() + bar.get_width() / 2  # center of the bar
+            y = row["p95_duration_seconds"]
+            #           ax.scatter(x, y, color="red", s=80, zorder=10)
+            ax.scatter(x, y, facecolors="red", marker="+", linewidths=1)
 
     g.figure.savefig(
         output_dir / query_type_str / "duration-by-resource-count-facetted-by-query.png"
