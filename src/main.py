@@ -78,6 +78,7 @@ def main() -> int:
                 failed_run_count += 1
                 retry_count += 1
 
+        gc.collect()
         logger.info("Done with pathling. Waiting for 30s")
         time.sleep(30)
 

@@ -9,7 +9,7 @@ import pandas as pd
 
 from benchmark import Benchmark, BenchmarkRunResult, QueryType
 
-PAGE_SIZE: int = 10000
+PAGE_SIZE: int = 10_000
 
 
 class PyrateBenchmark(Benchmark):
