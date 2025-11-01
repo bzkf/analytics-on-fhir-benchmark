@@ -12,7 +12,7 @@ from pathling_benchmark import PathlingBenchmark
 from pyrate_benchmark import PyrateBenchmark
 from trino_benchmark import TrinoBenchmark
 
-NUM_RUNS_PER_ENGINE: int = 10
+NUM_RUNS_PER_ENGINE: int = 3
 
 
 def main() -> int:
@@ -49,11 +49,11 @@ def main() -> int:
         )
 
         # trino
-        trino_results = trino.run_all_queries(run_id=i)
-        results = pd.concat([results, pd.DataFrame(trino_results)])
-        docker_client.containers.get("analytics-on-fhir-benchmark-minio-1").restart()
-        docker_client.containers.get("analytics-on-fhir-benchmark-trino-1").restart()
-        gc.collect()
+        # trino_results = trino.run_all_queries(run_id=i)
+        # results = pd.concat([results, pd.DataFrame(trino_results)])
+        # docker_client.containers.get("analytics-on-fhir-benchmark-minio-1").restart()
+        # docker_client.containers.get("analytics-on-fhir-benchmark-trino-1").restart()
+        # gc.collect()
 
         logger.info("Done with trino. Waiting for 30s")
         time.sleep(30)
@@ -83,10 +83,10 @@ def main() -> int:
         time.sleep(30)
 
         # pyrate
-        pyrate_results = pyrate.run_all_queries(run_id=i)
-        results = pd.concat([results, pd.DataFrame(pyrate_results)])
-        docker_client.containers.get("analytics-on-fhir-benchmark-blaze-1").restart()
-        gc.collect()
+        # pyrate_results = pyrate.run_all_queries(run_id=i)
+        # results = pd.concat([results, pd.DataFrame(pyrate_results)])
+        # docker_client.containers.get("analytics-on-fhir-benchmark-blaze-1").restart()
+        # gc.collect()
 
         logger.info("Done with pyrate. Waiting for 30s")
         time.sleep(30)

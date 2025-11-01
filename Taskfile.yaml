@@ -1,7 +1,7 @@
 version: "3"
 
 env:
-  SYNTHEA_POPULATION_SIZE: 100000
+  SYNTHEA_POPULATION_SIZE: 10000
 
 vars:
   # only here as a comment. not yet used to loop through all at once.

@@ -57,7 +57,7 @@ services:
     privileged: false
     environment:
       JAVA_TOOL_OPTIONS: |
-        -Xmx64g
+        -Xmx48g
         -Xss64m
         -XX:G1HeapRegionSize=32M
         -XX:+ExplicitGCInvokesConcurrent
@@ -85,7 +85,7 @@ services:
       # parquet.compression.codec.zstd.level: "9"
       spark.serializer: "org.apache.spark.serializer.KryoSerializer"
       spark.master: "local[*]"
-      spark.driver.memory: 24g
+      spark.driver.memory: 32g
     ports:
       - "127.0.0.1:8082:8080"
       - "127.0.0.1:4040:4040"

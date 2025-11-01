@@ -20,6 +20,7 @@ class PathlingBenchmark(Benchmark):
             SparkSession.builder.config(
                 "spark.jars.packages",
                 "au.csiro.pathling:library-runtime:7.2.0,io.delta:delta-spark_2.12:3.3.0,org.apache.hadoop:hadoop-aws:3.3.4",
+                # "au.csiro.pathling:library-runtime:9.0.0,io.delta:delta-spark_2.13:4.0.0,org.apache.hadoop:hadoop-aws:3.4.1"
             )
             .config("fs.s3a.access.key", "admin")
             .config("fs.s3a.secret.key", "miniopass")
@@ -30,7 +31,7 @@ class PathlingBenchmark(Benchmark):
             )
             .config(
                 "spark.driver.memory",
-                os.getenv("SPARK_DRIVER_MEMORY", "64g"),
+                os.getenv("SPARK_DRIVER_MEMORY", "48g"),
             )
             .config(
                 "spark.hadoop.fs.s3a.endpoint",
