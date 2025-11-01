@@ -31,7 +31,7 @@ tasks:
   generate-fhir-data:
     cmds:
       - java -jar synthea-with-dependencies.jar -s 20240711 -cs 20240711 -r 20240711 -p "${SYNTHEA_POPULATION_SIZE}" -c config/synthea.properties --exporter.baseDirectory="./synthea/output-${SYNTHEA_POPULATION_SIZE}/bulk" --exporter.fhir.bulk_data="true"
-      - java -jar synthea-with-dependencies.jar -s 20240711 -cs 20240711 -r 20240711 -p "${SYNTHEA_POPULATION_SIZE}" -c config/synthea.properties --exporter.baseDirectory="./synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions" --exporter.fhir.bulk_data="false"
+      # - java -jar synthea-with-dependencies.jar -s 20240711 -cs 20240711 -r 20240711 -p "${SYNTHEA_POPULATION_SIZE}" -c config/synthea.properties --exporter.baseDirectory="./synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions" --exporter.fhir.bulk_data="false"
 
   start-servers:
     cmds:
@@ -70,8 +70,8 @@ tasks:
       - task: install-dependencies
       - task: generate-fhir-data
       - task: start-servers
-      - task: upload-fhir-data
-      - task: remove-local-synthea-files
+      # - task: upload-fhir-data
+      # - task: remove-local-synthea-files
       - task: run-benchmarks
       - task: draw-plots
       - task: clean

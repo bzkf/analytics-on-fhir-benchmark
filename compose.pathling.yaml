@@ -1,6 +1,6 @@
 services:
   minio:
-    image: docker.io/bitnami/minio:2025.6.13@sha256:628d6a09902e59001eadc82590735eda210bf5d5a68cd72dfbb6894b3c1f97eb
+    image: docker.io/rustfs/rustfs:1.0.0-alpha.66 # docker.io/bitnami/minio:2025.6.13@sha256:628d6a09902e59001eadc82590735eda210bf5d5a68cd72dfbb6894b3c1f97eb
     ipc: none
     security_opt:
       - "no-new-privileges:true"
@@ -10,13 +10,14 @@ services:
     environment:
       MINIO_UPDATE: "off"
       MINIO_CALLHOME_ENABLE: "off"
-      MINIO_ROOT_USER: "admin"
+      RUSTFS_ACCESS_KEY: "admin"
       # kics-scan ignore-line
-      MINIO_ROOT_PASSWORD: "miniopass" # gitleaks:allow
+      RUSTFS_SECRET_KEY: "miniopass" # gitleaks:allow
       MINIO_DEFAULT_BUCKETS: "fhir"
       MINIO_SCHEME: "http"
+      RUSTFS_CONSOLE_ENABLE: "true"
     volumes:
-      - minio-data:/bitnami/minio/data:rw
+      - minio-data:/data:rw # /bitnami/minio/data:rw
     ports:
       - "127.0.0.1:9001:9001"
       - "127.0.0.1:9000:9000"
@@ -39,13 +40,34 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        until [ "$(curl -s -o /dev/null -L -w "%{http_code}" "$$MINIO_ENDPOINT_URL/minio/health/live")" == "200" ]; do
+        until [ "$(curl -s -o /dev/null -L -w "%{http_code}" "$$MINIO_ENDPOINT_URL/health")" == "200" ]; do
             echo "$(date): Waiting for minio server @ $$MINIO_ENDPOINT_URL to be up";
             sleep 5;
         done;
     depends_on:
       minio:
         condition: service_started
+
+  create-default-buckets:
+    image: ${IMAGE_REGISTRY_DOCKER_IO:-docker.io}/minio/minio:RELEASE.2025-07-23T15-54-02Z@sha256:d249d1fb6966de4d8ad26c04754b545205ff15a62e4fd19ebd0f26fa5baacbc0
+    restart: on-failure
+    cap_drop:
+      - ALL
+    privileged: false
+    ipc: none
+    security_opt:
+      - "no-new-privileges:true"
+    entrypoint: ["/bin/bash", "-c"]
+    environment:
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: miniopass
+    command:
+      - |
+        /usr/bin/mc alias set minio http://minio:9000 $${AWS_ACCESS_KEY_ID} $${AWS_SECRET_ACCESS_KEY};
+        /usr/bin/mc mb --ignore-existing minio/fhir;
+    depends_on:
+      wait-for-minio:
+        condition: service_completed_successfully
 
   pathling:
     image: docker.io/aehrc/pathling:7.2.0@sha256:31b5ef50294e55136ae2278c2d0b8435a96a15b5da040ec785effb51875d08d3
@@ -161,9 +183,9 @@ services:
         python3 /opt/warehousekeeper/warehousekeeper.py vacuum   --bucket-name=fhir --database-name-prefix=default/ --retention-hours=0 --dry-run=false --enforce-retention-duration=false
     volumes:
       - $PWD/config/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
-    depends_on:
-      import-resources:
-        condition: service_completed_successfully
+    # depends_on:
+    #   import-resources:
+    #     condition: service_completed_successfully
 
   metastore-db:
     image: docker.io/bitnami/postgresql:17.5.0@sha256:d98f9bee622629586327238d9d178f9941b517adbabe43d6d87cc61063e3eb26

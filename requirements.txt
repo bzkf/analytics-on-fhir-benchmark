@@ -1,7 +1,7 @@
 fhir-pyrate==0.2.1
 trino==0.336.0
 sqlfluff==3.1.0
-pathling==7.2.0
+pathling==9.0.0
 loguru==0.7.2
 polars==1.35.1
 seaborn==0.13.2

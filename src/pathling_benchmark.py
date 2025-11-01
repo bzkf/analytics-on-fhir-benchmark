@@ -19,11 +19,13 @@ class PathlingBenchmark(Benchmark):
         spark = (
             SparkSession.builder.config(
                 "spark.jars.packages",
-                "au.csiro.pathling:library-runtime:7.2.0,io.delta:delta-spark_2.12:3.3.0,org.apache.hadoop:hadoop-aws:3.3.4",
-                # "au.csiro.pathling:library-runtime:9.0.0,io.delta:delta-spark_2.13:4.0.0,org.apache.hadoop:hadoop-aws:3.4.1"
+                # "au.csiro.pathling:library-runtime:7.2.0,io.delta:delta-spark_2.12:3.3.0,org.apache.hadoop:hadoop-aws:3.3.4",
+                "au.csiro.pathling:library-runtime:9.0.0,io.delta:delta-spark_2.13:4.0.0,org.apache.hadoop:hadoop-aws:3.4.1"
             )
             .config("fs.s3a.access.key", "admin")
             .config("fs.s3a.secret.key", "miniopass")
+            .config("aws.accessKeyId", "admin")
+            .config("aws.secretAccessKey", "miniopass")
             .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
             .config(
                 "spark.sql.catalog.spark_catalog",
@@ -66,98 +68,113 @@ class PathlingBenchmark(Benchmark):
                     "query_name": "gender-age",
                     "resource_type": "Patient",
                     "columns": [
-                        exp("Patient.id", "patient_id"),
-                        exp("Patient.birthDate", "patient_birthdate"),
-                        exp("Patient.gender", "patient_gender"),
+                        {
+                            "column": [
+                                {
+                                    "path": "Patient.id",
+                                    "name": "patient_id",
+                                },
+                                {
+                                    "path": "Patient.birthDate",
+                                    "name": "patient_birthdate",
+                                },
+                                {
+                                    "path": "Patient.gender",
+                                    "name": "patient_gender",
+                                },
+                            ],
+                        }
                     ],
                     "filters": [
-                        "Patient.gender = 'female' and Patient.birthDate >= @1970-01-01"
+                        {
+                            "path": "Patient.gender = 'female' and Patient.birthDate >= @1970-01-01",
+                        },
                     ],
                 },
                 {
                     "query_name": "diabetes",
                     "resource_type": "Condition",
-                    "columns": [
-                        exp("Condition.id", "condition_id"),
-                        exp(
-                            "Condition.code.coding.where(system='http://snomed.info/sct' and (code='73211009' or code='427089005' or code='44054006')).code",
-                            "condition_snomed_code",
-                        ),
-                        exp("Condition.onsetDateTime", "condition_onset"),
-                        exp("Condition.encounter.resolve().id", "encounter_id"),
-                        exp(
-                            "Condition.encounter.resolve().period.start",
-                            "encounter_period_start",
-                        ),
-                        exp(
-                            "Condition.encounter.resolve().period.end",
-                            "encounter_period_end",
-                        ),
-                        exp("Condition.encounter.resolve().status", "encounter_status"),
-                        exp(
-                            "Condition.subject.resolve().ofType(Patient).id",
-                            "patient_id",
-                        ),
-                        exp(
-                            "Condition.subject.resolve().ofType(Patient).birthDate",
-                            "patient_birthdate",
-                        ),
+                    "columns": [  # = select
+                        {
+                            "column": [
+                                {
+                                    "path": "Condition.id",
+                                    "name": "condition_id",
+                                },
+                                {
+                                    "path": "Condition.subject.reference",
+                                    "name": "patient_id",
+                                },
+                                {
+                                    "path": "Condition.code.coding.where(system='http://snomed.info/sct' and (code='73211009' or code='427089005' or code='44054006')).code",
+                                    "name": "condition_snomed_code",
+                                },
+                                {
+                                    "path": "onset.ofType(dateTime)",
+                                    "name": "condition_onset",
+                                },
+                            ],
+                        }
                     ],
-                    "filters": [
-                        "Condition.code.coding.where(system='http://snomed.info/sct' and (code='73211009' or code='427089005' or code='44054006')).exists()",
-                        "Condition.encounter.resolve().period.start >= @2020-01-01",
-                        "Condition.subject.resolve().ofType(Patient).birthDate >= @1970-01-01",
+                    "filters": [  # = where
+                        {
+                            "path": "Condition.code.coding.where(system='http://snomed.info/sct' and (code='73211009' or code='427089005' or code='44054006')).exists()",
+                        },
                     ],
                 },
                 {
                     "query_name": "hemoglobin",
                     "resource_type": "Observation",
                     "columns": [
-                        exp(
-                            "Observation.subject.resolve().ofType(Patient).id",
-                            "patient_id",
-                        ),
-                        exp(
-                            "Observation.subject.resolve().ofType(Patient).birthDate",
-                            "patient_birthdate",
-                        ),
-                        exp("Observation.id", "observation_id"),
-                        exp(
-                            "Observation.code.coding.where(system = 'http://loinc.org').code",
-                            "loinc_code",
-                        ),
-                        exp(
-                            "Observation.valueQuantity.where(system = 'http://unitsofmeasure.org').code",
-                            "value_quantity_ucum_code",
-                        ),
-                        exp(
-                            "Observation.valueQuantity.where(system = 'http://unitsofmeasure.org').value",
-                            "value_quantity_value",
-                        ),
-                        exp("Observation.effectiveDateTime", "effective_datetime"),
-                        exp(
-                            "Observation.subject.reference",
-                            "observation_patient_reference",
-                        ),
+                        {
+                            "column": [
+                                {
+                                    "path": "Observation.subject.reference",
+                                    "name": "patient_id",
+                                },
+                                {
+                                    "path": "Observation.id",
+                                    "name": "observation_id",
+                                },
+                                {
+                                    "path": "Observation.code.coding.where(system = 'http://loinc.org').code",
+                                    "name": "loinc_code",
+                                },
+                                {
+                                    "path": "Observation.valueQuantity.where(system = 'http://unitsofmeasure.org').code",
+                                    "name": "value_quantity_ucum_code",
+                                },
+                                {
+                                    "path": "Observation.valueQuantity.where(system = 'http://unitsofmeasure.org').value",
+                                    "name": "value_quantity_value",
+                                },
+                                {
+                                    "path": "Observation.effectiveDateTime",
+                                    "name": "effective_datetime",
+                                },
+                            ],
+                        }
                     ],
-                    "filters": [
-                        "Observation.exists((code.coding.exists(system='http://loinc.org' and code='718-7') and valueQuantity.exists(system='http://unitsofmeasure.org' and code='g/dL') and valueQuantity.value > 25) "
-                        + "or (code.coding.exists(system='http://loinc.org' and (code='17856-6' or code='4548-4' or code='4549-2')) and valueQuantity.exists(system='http://unitsofmeasure.org' and code='%') and valueQuantity.value > 5))",
+                    "filters": [  # = where
+                        {
+                            "path": "Observation.exists((code.coding.exists(system='http://loinc.org' and code='718-7') and valueQuantity.exists(system='http://unitsofmeasure.org' and code='g/dL') and valueQuantity.value > 25) "
+                            + "or (code.coding.exists(system='http://loinc.org' and (code='17856-6' or code='4548-4' or code='4549-2')) and valueQuantity.exists(system='http://unitsofmeasure.org' and code='%') and valueQuantity.value > 5))",
+                        },
                     ],
                 },
             ],
-            QueryType.AGGREGATE: [
-                {
-                    "query_name": "observations-by-code",
-                    "resource_type": "Observation",
-                    "aggregations": [exp("count()", "num_observations")],
-                    "groupings": [
-                        exp("code.coding", "coding"),
-                    ],
-                    "filters": [],
-                    "order_by": "num_observations",
-                },
-            ],
+            # QueryType.AGGREGATE: [
+            #     {
+            #         "query_name": "observations-by-code",
+            #         "resource_type": "Observation",
+            #         "aggregations": [exp("count()", "num_observations")],
+            #         "groupings": [
+            #             exp("code.coding", "coding"),
+            #         ],
+            #         "filters": [],
+            #         "order_by": "num_observations",
+            #     },
+            # ],
             QueryType.COUNT: [
                 {
                     "query_name": "gender-age",
@@ -173,7 +190,7 @@ class PathlingBenchmark(Benchmark):
 
         start_timestamp = datetime.datetime.now(datetime.UTC)
 
-        for query_type in QueryType:
+        for query_type in [QueryType.COUNT, QueryType.EXTRACT]:
             output_folder = output_folder_base / str(query_type)
             output_folder.mkdir(parents=True, exist_ok=True)
 
@@ -193,18 +210,19 @@ class PathlingBenchmark(Benchmark):
                 df: DataFrame = None
 
                 if query_type == QueryType.AGGREGATE:
-                    df = data.aggregate(
-                        resource_type=query["resource_type"],
-                        aggregations=query["aggregations"],
-                        groupings=query["groupings"],
-                        filters=query["filters"],
-                    )
-                    df = df.orderBy(query["order_by"], ascending=False).select(
-                        "coding.display",
-                        "coding.code",
-                        "coding.system",
-                        "num_observations",
-                    )
+                    # df = data.aggregate(
+                    #     resource_type=query["resource_type"],
+                    #     aggregations=query["aggregations"],
+                    #     groupings=query["groupings"],
+                    #     filters=query["filters"],
+                    # )
+                    # df = df.orderBy(query["order_by"], ascending=False).select(
+                    #     "coding.display",
+                    #     "coding.code",
+                    #     "coding.system",
+                    #     "num_observations",
+                    # )
+                    print("query type AGGREGATE not implemented")
                 else:
                     # re-use the query with the same name in the list of "extract" queries
                     if query_type == QueryType.COUNT:
@@ -214,10 +232,10 @@ class PathlingBenchmark(Benchmark):
                             if q["query_name"] == query_name
                         ][0]
 
-                    df = data.extract(
-                        resource_type=query["resource_type"],
-                        columns=query["columns"],
-                        filters=query["filters"],
+                    df = data.view(
+                        resource=query["resource_type"],
+                        select=query["columns"],
+                        where=query["filters"],
                     )
 
                     if query_type == QueryType.COUNT:

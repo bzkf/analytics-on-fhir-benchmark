@@ -27,9 +27,9 @@ def main() -> int:
 
     resources_to_count = ["Patient", "Observation", "Encounter", "Condition"]
 
-    resource_count_total = trino.get_resource_counts_total(resources_to_count)
+    resource_count_total = "" # trino.get_resource_counts_total(resources_to_count)
 
-    resource_counts = trino.get_resource_counts(resources_to_count)
+    resource_counts = {} # trino.get_resource_counts(resources_to_count)
 
     logger.info("Resource counts: {resource_counts}", resource_counts=resource_counts)
 
