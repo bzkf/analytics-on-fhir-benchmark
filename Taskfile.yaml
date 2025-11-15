@@ -1,7 +1,7 @@
 version: "3"
 
 env:
-  SYNTHEA_POPULATION_SIZE: 100000
+  SYNTHEA_POPULATION_SIZE: 1000
 
 vars:
   # only here as a comment. not yet used to loop through all at once.
@@ -16,16 +16,16 @@ tasks:
   install-dependencies:
     cmds:
       - curl -LO https://github.com/synthetichealth/synthea/releases/download/master-branch-latest/synthea-with-dependencies.jar
-      - curl -LO https://repo1.maven.org/maven2/io/trino/trino-cli/476/trino-cli-476-executable.jar
-      - curl -LO https://github.com/samply/blazectl/releases/download/v1.1.0/blazectl-1.1.0-linux-amd64.tar.gz
-      - tar xzf blazectl-1.1.0-linux-amd64.tar.gz
-      - rm blazectl-1.1.0-linux-amd64.tar.gz
+      - curl -LO https://repo1.maven.org/maven2/io/trino/trino-cli/478/trino-cli-476-executable.jar
+      - curl -LO https://github.com/samply/blazectl/releases/download/v1.2.0/blazectl-1.2.0-linux-amd64.tar.gz
+      - tar xzf blazectl-1.2.0-linux-amd64.tar.gz
+      - rm blazectl-1.2.0-linux-amd64.tar.gz
       - ./blazectl --version
       - pip install -r requirements.txt
     generates:
       - synthea-with-dependencies.jar
       - blazectl
-      - trino-cli-476-executable.jar
+      - trino-cli-478-executable.jar
 
   # TODO: could use a task loop to generate synthea data for all sizes at once.
   generate-fhir-data:
@@ -35,7 +35,7 @@ tasks:
 
   start-servers:
     cmds:
-      - docker compose -f compose.blaze.yaml -f compose.pathling.yaml -f compose.trino.yaml up -d
+      - docker compose -f compose.blaze.yaml -f compose.pathling.yaml -f compose.trino.yaml -f compose.hapi.yaml up -d
       # after the import is done, we no longer need the pathling server itself
       - docker compose -f compose.pathling.yaml stop pathling
 
@@ -47,9 +47,9 @@ tasks:
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8083/fhir'
       - ./blazectl upload --no-progress --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8083/fhir
       # hapi fhir jpa
-      # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find output/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8084/fhir'
-      # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find output/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8084/fhir'
-      # - ./blazectl upload output/transactions/fhir/ --server http://localhost:8084/fhir
+      - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8084/fhir'
+      - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8084/fhir'
+      - ./blazectl upload --no-progress --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8084/fhir
 
   remove-local-synthea-files:
     cmds:

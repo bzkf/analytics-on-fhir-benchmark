@@ -1,0 +1,31 @@
+services:
+  hapi-fhir:
+    image: docker.io/hapiproject/hapi:v8.4.0-3@sha256:429136d44bb60456f7ca91f906cfcf1a43f3c17ff296edd8e9070af7876b309a
+    restart: on-failure
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://hapi-fhir-postgres:5432/hapi"
+      SPRING_DATASOURCE_USERNAME: "admin"
+      SPRING_DATASOURCE_PASSWORD: "admin"
+      SPRING_DATASOURCE_DRIVERCLASSNAME: "org.postgresql.Driver"
+      spring.jpa.properties.hibernate.dialect: ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect
+      HAPI_FHIR_VALIDATION_REQUESTS_ENABLED: "false"
+      HAPI_FHIR_ENFORCE_REFERENTIAL_INTEGRITY_ON_DELETE: "false"
+      HAPI_FHIR_ENFORCE_REFERENTIAL_INTEGRITY_ON_WRITE: "false"
+      HAPI_FHIR_SUBSCRIPTION_RESTHOOK_ENABLED: "false"
+      # TODO: set to 64g
+      JAVA_TOOL_OPTIONS: "-Xmx20g"
+    ports:
+      - "127.0.0.1:8084:8080"
+
+  hapi-fhir-postgres:
+    image: docker.io/library/postgres:18.1@sha256:28bda6d50590658221007b10573830c941b483e9d1a5bc2713a3f60477df8389
+    restart: always
+    environment:
+      POSTGRES_DB: "hapi"
+      POSTGRES_USER: "admin"
+      POSTGRES_PASSWORD: "admin"
+    volumes:
+      - hapi-fhir-postgres:/var/lib/postgresql/18/docker:rw
+
+volumes:
+  hapi-fhir-postgres: {}
