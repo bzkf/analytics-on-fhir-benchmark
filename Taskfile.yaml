@@ -83,4 +83,4 @@ tasks:
 
   clean:
     cmds:
-      - docker compose -f compose.blaze.yaml -f compose.pathling.yaml -f compose.trino.yaml down -v --remove-orphans
+      - docker compose -f compose.blaze.yaml -f compose.pathling.yaml -f compose.trino.yaml -f compose.hapi.yaml -f compose.cadvisor.yaml down -v --remove-orphans
