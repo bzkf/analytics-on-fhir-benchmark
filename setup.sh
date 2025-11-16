@@ -19,4 +19,3 @@ apt-get update
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin python3-pip python3.12-venv openjdk-21-jre-headless
 
 python3 -m venv .venv
-source .venv/bin/activate

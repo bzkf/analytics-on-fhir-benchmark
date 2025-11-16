@@ -1,4 +1,4 @@
-fhir-pyrate==0.2.1
+fhir-pyrate==0.2.3
 trino==0.336.0
 sqlfluff==3.1.0
 pathling==7.0.1
