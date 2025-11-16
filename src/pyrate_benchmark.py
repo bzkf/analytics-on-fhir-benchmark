@@ -21,7 +21,7 @@ class PyrateBenchmark(Benchmark):
 
         self.search = Pirate(
             auth=auth,
-            base_url="http://localhost:8083/fhir/",
+            base_url="http://localhost:8084/fhir/",
             print_request_url=False,  # TODO: useful for debugging
         )
         logger.info("Completed initialization.")
@@ -78,39 +78,39 @@ class PyrateBenchmark(Benchmark):
                     ],
                     "post_process": None,
                 },
-                # {
-                #     "query_name": "hemoglobin",
-                #     "resource_type": "Observation",
-                #     "request_params": {
-                #         "code-value-quantity": "http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
-                #         "_include": "Observation:patient",
-                #         "_count": PAGE_SIZE,
-                #         "_sort": "_id",
-                #     },
-                #     "fhir_paths": [
-                #         ("patient_id", "Patient.id"),
-                #         ("patient_birthdate", "Patient.birthDate"),
-                #         ("observation_id", "Observation.id"),
-                #         (
-                #             "loinc_code",
-                #             "Observation.code.coding.where(system = 'http://loinc.org').code",
-                #         ),
-                #         (
-                #             "value_quantity_ucum_code",
-                #             "Observation.valueQuantity.where(system = 'http://unitsofmeasure.org').code",
-                #         ),
-                #         (
-                #             "value_quantity_value",
-                #             "Observation.valueQuantity.where(system = 'http://unitsofmeasure.org').value",
-                #         ),
-                #         ("effective_datetime", "Observation.effectiveDateTime"),
-                #         (
-                #             "observation_patient_reference",
-                #             "Observation.subject.reference",
-                #         ),
-                #     ],
-                #     "post_process": None,
-                # },
+                {
+                    "query_name": "hemoglobin",
+                    "resource_type": "Observation",
+                    "request_params": {
+                        "code-value-quantity": "http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL", #,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
+                        "_include": "Observation:patient",
+                        "_count": PAGE_SIZE,
+                        "_sort": "_id",
+                    },
+                    "fhir_paths": [
+                        ("patient_id", "Patient.id"),
+                        ("patient_birthdate", "Patient.birthDate"),
+                        ("observation_id", "Observation.id"),
+                        (
+                            "loinc_code",
+                            "Observation.code.coding.where(system = 'http://loinc.org').code",
+                        ),
+                        (
+                            "value_quantity_ucum_code",
+                            "Observation.valueQuantity.where(system = 'http://unitsofmeasure.org').code",
+                        ),
+                        (
+                            "value_quantity_value",
+                            "Observation.valueQuantity.where(system = 'http://unitsofmeasure.org').value",
+                        ),
+                        ("effective_datetime", "Observation.effectiveDateTime"),
+                        (
+                            "observation_patient_reference",
+                            "Observation.subject.reference",
+                        ),
+                    ],
+                    "post_process": None,
+                },
             ],
             QueryType.AGGREGATE: [
                 {
@@ -147,7 +147,6 @@ class PyrateBenchmark(Benchmark):
                         "birthdate": "ge1970-01-01",
                         "gender": "female",
                         "_summary": "count",
-                        "_sort": "_id",
                     },
                     "fhir_paths": [],
                     "post_process": None,
@@ -160,7 +159,6 @@ class PyrateBenchmark(Benchmark):
                         "code": "http://snomed.info/sct|73211009,http://snomed.info/sct|427089005,http://snomed.info/sct|44054006",
                         "subject:Patient.birthdate": "ge1970-01-01",
                         "_summary": "count",
-                        "_sort": "_id",
                     },
                     "fhir_paths": [],
                     "post_process": None,
@@ -169,9 +167,8 @@ class PyrateBenchmark(Benchmark):
                     "query_name": "hemoglobin",
                     "resource_type": "Patient",
                     "request_params": {
-                        "_has:Observation:patient:code-value-quantity": "http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
+                        "_has:Observation:patient:code-value-quantity": "http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL", #,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
                         "_summary": "count",
-                        "_sort": "_id",
                     },
                     "fhir_paths": [],
                     "post_process": None,

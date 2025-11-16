@@ -85,7 +85,7 @@ services:
       # parquet.compression.codec.zstd.level: "9"
       spark.serializer: "org.apache.spark.serializer.KryoSerializer"
       spark.master: "local[*]"
-      spark.driver.memory: 24g
+      spark.driver.memory: 48g
     ports:
       - "127.0.0.1:8082:8080"
       - "127.0.0.1:4040:4040"
@@ -131,7 +131,7 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        curl -X POST --header 'Content-Type: application/fhir+json' --data @/tmp/pathling-import-request.json --url 'http://pathling:8080/fhir/$$import'
+        time -v curl -X POST --header 'Content-Type: application/fhir+json' --data @/tmp/pathling-import-request.json --url 'http://pathling:8080/fhir/$$import'
     volumes:
       - $PWD/pathling-import-request.json:/tmp/pathling-import-request.json:ro
     depends_on:
