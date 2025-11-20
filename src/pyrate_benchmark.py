@@ -25,7 +25,7 @@ class PyrateBenchmark(Benchmark):
         )
         logger.info("Completed initialization.")
 
-    def run_all_queries(self, run_id: int) -> list[BenchmarkRunResult]:
+    def run_all_queries(self, run_id: int, is_warmup: bool = False) -> list[BenchmarkRunResult]:
         output_folder_base = Path.cwd() / "results" / "pyrate"
 
         results = []
@@ -233,7 +233,7 @@ class PyrateBenchmark(Benchmark):
                 duration_total = time.perf_counter() - timings_start
 
                 result = BenchmarkRunResult(
-                    run_id=str(run_id),
+                    run_id=run_id,
                     start_timestamp=start_timestamp,
                     engine="pyrate",
                     query=query_name,
@@ -242,6 +242,7 @@ class PyrateBenchmark(Benchmark):
                     write_to_file_duration_seconds=write_to_file_duration,
                     fetch_duration_seconds=fetch_duration,
                     post_process_duration_seconds=post_process_duration,
+                    is_warmup=is_warmup,
                 )
                 results.append(result)
 

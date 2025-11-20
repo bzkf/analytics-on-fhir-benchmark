@@ -19,7 +19,7 @@ class TrinoBenchmark(Benchmark):
         )
         logger.info("Completed initialization.")
 
-    def run_all_queries(self, run_id: int) -> list[BenchmarkRunResult]:
+    def run_all_queries(self, run_id: int, is_warmup: bool = False) -> list[BenchmarkRunResult]:
         logger.info("Begin trino benchmarking")
         queries_base_path = Path.cwd() / "queries"
 
@@ -101,6 +101,7 @@ class TrinoBenchmark(Benchmark):
                     trino_wall_time_seconds=cursor.stats["wallTimeMillis"] / 1000.0,
                     trino_elapsed_time_seconds=cursor.stats["elapsedTimeMillis"]
                     / 1000.0,
+                    is_warmup=is_warmup,
                 )
 
                 results.append(result)

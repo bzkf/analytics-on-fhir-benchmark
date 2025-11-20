@@ -24,7 +24,7 @@ class QueryEngine(Enum):
 
 @dataclass
 class BenchmarkRunResult:
-    run_id: str
+    run_id: int
     start_timestamp: datetime.datetime
     engine: str
     query: str
@@ -36,6 +36,7 @@ class BenchmarkRunResult:
     trino_cpu_time_seconds: float = 0
     trino_wall_time_seconds: float = 0
     trino_elapsed_time_seconds: float = 0
+    is_warmup: bool = False
 
 
 class Benchmark(ABC):

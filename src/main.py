@@ -6,13 +6,12 @@ from loguru import logger
 import pandas as pd
 import docker
 import gc
-import time
 
 from pathling_benchmark import PathlingBenchmark
 from pyrate_benchmark import PyrateBenchmark
 from trino_benchmark import TrinoBenchmark
 
-NUM_RUNS_PER_ENGINE: int = 3  #TODO
+NUM_RUNS_PER_ENGINE: int = 3  # TODO
 
 
 def main() -> int:
@@ -43,53 +42,85 @@ def main() -> int:
 
     failed_run_count = 0
 
-    for i in range(NUM_RUNS_PER_ENGINE):
+    for cold_or_warm in ["cold", "warm"]:
         logger.info(
-            "Run {i} out of {total_runs}", i=i + 1, total_runs=NUM_RUNS_PER_ENGINE
+            "Running benchmarks in {cold_or_warm} state", cold_or_warm=cold_or_warm
         )
 
-        # trino
-        trino_results = trino.run_all_queries(run_id=i)
-        results = pd.concat([results, pd.DataFrame(trino_results)])
-        docker_client.containers.get("analytics-on-fhir-benchmark-minio-1").restart()
-        docker_client.containers.get("analytics-on-fhir-benchmark-trino-1").restart()
-        gc.collect()
+        runs_to_perform = NUM_RUNS_PER_ENGINE
+        if cold_or_warm == "warm":
+            runs_to_perform = runs_to_perform + 1
 
-        logger.info("Done with trino. Waiting for 30s")
-        time.sleep(30)
+        for i in range(runs_to_perform):
+            logger.info(
+                "Run {i} out of {total_runs}", i=i + 1, total_runs=NUM_RUNS_PER_ENGINE
+            )
 
-        # pathling
-        # we occasionally observe transient OOM issues, so add retries here
-        max_retries = 3
-        retry_count = 0
-        while retry_count < max_retries:
-            try:
-                pathling_results = pathling.run_all_queries(run_id=i)
-                results = pd.concat([results, pd.DataFrame(pathling_results)])
-                pathling.reset()
-                break
-            except Exception as exc:
-                logger.error(
-                    "Pathling benchmark failed {error}. Attempt {retry_count} out of {max_retries}.",
-                    retry_count=retry_count,
-                    max_retries=max_retries,
-                    error=exc,
-                )
-                failed_run_count += 1
-                retry_count += 1
+            # trino
+            trino_results = trino.run_all_queries(
+                run_id=i, is_warmup=(cold_or_warm == "warm" and i == 0)
+            )
+            results = pd.concat([results, pd.DataFrame(trino_results)])
 
-        gc.collect()
-        logger.info("Done with pathling. Waiting for 30s")
-        time.sleep(30)
+            if cold_or_warm == "cold":
+                logger.info("Restarting trino and minio containers for cold run")
+                docker_client.containers.get(
+                    "analytics-on-fhir-benchmark-minio-1"
+                ).restart()
+                docker_client.containers.get(
+                    "analytics-on-fhir-benchmark-trino-1"
+                ).restart()
+            gc.collect()
 
-        # pyrate
-        pyrate_results = pyrate.run_all_queries(run_id=i)
-        results = pd.concat([results, pd.DataFrame(pyrate_results)])
-        docker_client.containers.get("analytics-on-fhir-benchmark-blaze-1").restart()
-        gc.collect()
+            logger.info("Done with trino. Waiting for 30s")
+            time.sleep(30)
 
-        logger.info("Done with pyrate. Waiting for 30s")
-        time.sleep(30)
+            # pathling
+            # we occasionally observe transient OOM issues, so add retries here
+            max_retries = 3
+            retry_count = 0
+            while retry_count < max_retries:
+                try:
+                    pathling_results = pathling.run_all_queries(
+                        run_id=i, is_warmup=(cold_or_warm == "warm" and i == 0)
+                    )
+                    results = pd.concat([results, pd.DataFrame(pathling_results)])
+                    if cold_or_warm == "cold":
+                        logger.info("Resetting pathling/spark for cold run")
+                        pathling.reset()
+                    break
+                except Exception as exc:
+                    logger.error(
+                        "Pathling benchmark failed {error}. Attempt {retry_count} out of {max_retries}.",
+                        retry_count=retry_count,
+                        max_retries=max_retries,
+                        error=exc,
+                    )
+                    failed_run_count += 1
+                    retry_count += 1
+
+            gc.collect()
+            logger.info("Done with pathling. Waiting for 30s")
+            time.sleep(30)
+
+            # pyrate
+            pyrate_results = pyrate.run_all_queries(
+                run_id=i, is_warmup=(cold_or_warm == "warm" and i == 0)
+            )
+            results = pd.concat([results, pd.DataFrame(pyrate_results)])
+
+            if cold_or_warm == "cold":
+                logger.info("Restarting blaze for cold run")
+                docker_client.containers.get(
+                    "analytics-on-fhir-benchmark-blaze-1"
+                ).restart()
+
+            gc.collect()
+
+            logger.info("Done with pyrate. Waiting for 30s")
+            time.sleep(30)
+
+        logger.info("{warm_or_cold} run completed.", warm_or_cold=cold_or_warm)
 
     logger.info(
         "All benchmarks completed. Failed runs: {failed_run_count}",
