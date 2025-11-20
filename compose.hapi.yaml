@@ -12,20 +12,26 @@ services:
       HAPI_FHIR_ENFORCE_REFERENTIAL_INTEGRITY_ON_DELETE: "false"
       HAPI_FHIR_ENFORCE_REFERENTIAL_INTEGRITY_ON_WRITE: "false"
       HAPI_FHIR_SUBSCRIPTION_RESTHOOK_ENABLED: "false"
-      # TODO: set to 64g
-      JAVA_TOOL_OPTIONS: "-Xmx20g"
+      JAVA_TOOL_OPTIONS: "-Xmx48g"
     ports:
       - "127.0.0.1:8084:8080"
 
   hapi-fhir-postgres:
     image: docker.io/library/postgres:18.1@sha256:28bda6d50590658221007b10573830c941b483e9d1a5bc2713a3f60477df8389
     restart: always
+    shm_size: 18g # So the answer would be: shm_max value for docker should be higher or equal than shared_buffers
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     environment:
       POSTGRES_DB: "hapi"
       POSTGRES_USER: "admin"
       POSTGRES_PASSWORD: "admin"
+    deploy:
+      resources:
+        limits:
+          memory: 16g
     volumes:
       - hapi-fhir-postgres:/var/lib/postgresql/18/docker:rw
+      - $PWD/config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
 
 volumes:
   hapi-fhir-postgres: {}

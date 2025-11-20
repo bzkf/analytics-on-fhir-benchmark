@@ -12,7 +12,7 @@ from pathling_benchmark import PathlingBenchmark
 from pyrate_benchmark import PyrateBenchmark
 from trino_benchmark import TrinoBenchmark
 
-NUM_RUNS_PER_ENGINE: int = 10
+NUM_RUNS_PER_ENGINE: int = 3  #TODO
 
 
 def main() -> int:

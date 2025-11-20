@@ -1,7 +1,7 @@
 version: "3"
 
 env:
-  SYNTHEA_POPULATION_SIZE: 1000
+  SYNTHEA_POPULATION_SIZE: 1000000
 
 vars:
   # only here as a comment. not yet used to loop through all at once.
@@ -11,12 +11,13 @@ vars:
     - 10000
     - 50000
     - 100000
+    - 1000000
 
 tasks:
   install-dependencies:
     cmds:
       - curl -LO https://github.com/synthetichealth/synthea/releases/download/master-branch-latest/synthea-with-dependencies.jar
-      - curl -LO https://repo1.maven.org/maven2/io/trino/trino-cli/478/trino-cli-476-executable.jar
+      - curl -LO https://repo1.maven.org/maven2/io/trino/trino-cli/478/trino-cli-478-executable.jar
       - curl -LO https://github.com/samply/blazectl/releases/download/v1.2.0/blazectl-1.2.0-linux-amd64.tar.gz
       - tar xzf blazectl-1.2.0-linux-amd64.tar.gz
       - rm blazectl-1.2.0-linux-amd64.tar.gz
@@ -31,25 +32,40 @@ tasks:
   generate-fhir-data:
     cmds:
       - java -jar synthea-with-dependencies.jar -s 20240711 -cs 20240711 -r 20240711 -p "${SYNTHEA_POPULATION_SIZE}" -c config/synthea.properties --exporter.baseDirectory="./synthea/output-${SYNTHEA_POPULATION_SIZE}/bulk" --exporter.fhir.bulk_data="true"
+      - |
+        for f in ./synthea/output-${SYNTHEA_POPULATION_SIZE}/bulk/fhir/*.*.ndjson; do
+            base=$(echo "$f" | sed -E 's/\.[0-9]+//')
+            mv "$f" "$base"
+        done
       - java -jar synthea-with-dependencies.jar -s 20240711 -cs 20240711 -r 20240711 -p "${SYNTHEA_POPULATION_SIZE}" -c config/synthea.properties --exporter.baseDirectory="./synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions" --exporter.fhir.bulk_data="false"
 
   start-servers:
+    vars:
+      START_TIME:
+        sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
     cmds:
-      - docker compose -f compose.blaze.yaml -f compose.pathling.yaml -f compose.trino.yaml -f compose.hapi.yaml up -d
+      - mkdir -p src/results/
+      - docker compose -f compose.blaze.yaml -f compose.pathling.yaml -f compose.trino.yaml -f compose.hapi.yaml -f compose.cadvisor.yaml up -d
+      - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/${SYNTHEA_POPULATION_SIZE}-pathling-import-metrics.csv
       # after the import is done, we no longer need the pathling server itself
       - docker compose -f compose.pathling.yaml stop pathling
 
   upload-fhir-data:
+    vars:
+      START_TIME:
+        sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
     cmds:
-      # blaze
       # hospitalInformation & practitionerInformation are required for referential integrity.
+      # blaze
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8083/fhir'
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8083/fhir'
-      - ./blazectl upload --no-progress --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8083/fhir
+      - time ./blazectl upload --no-progress --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8083/fhir
+      - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/${SYNTHEA_POPULATION_SIZE}-blaze-import-metrics.csv
       # hapi fhir jpa
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8084/fhir'
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8084/fhir'
-      - ./blazectl upload --no-progress --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8084/fhir
+      - time ./blazectl upload --no-progress --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8084/fhir
+      - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/${SYNTHEA_POPULATION_SIZE}-hapi-fhir-import-metrics.csv
 
   remove-local-synthea-files:
     cmds:
@@ -78,4 +94,4 @@ tasks:
 
   clean:
     cmds:
-      - docker compose -f compose.blaze.yaml -f compose.pathling.yaml -f compose.trino.yaml down -v --remove-orphans
+      - docker compose -f compose.blaze.yaml -f compose.pathling.yaml -f compose.trino.yaml -f compose.hapi.yaml -f compose.cadvisor.yaml down -v --remove-orphans
