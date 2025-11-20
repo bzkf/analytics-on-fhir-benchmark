@@ -5,7 +5,6 @@ from fhir_pyrate import Ahoy, Pirate
 from pathlib import Path
 from loguru import logger
 from pandas import DataFrame
-import pandas as pd
 
 from benchmark import Benchmark, BenchmarkRunResult, QueryType
 
@@ -195,7 +194,7 @@ class PyrateBenchmark(Benchmark):
                 )
                 timings_start = time.perf_counter()
 
-                df: DataFrame = None
+                df: DataFrame | dict[str, DataFrame]
 
                 if query_type == QueryType.COUNT:
                     # special handling for the count case
@@ -234,7 +233,7 @@ class PyrateBenchmark(Benchmark):
                 duration_total = time.perf_counter() - timings_start
 
                 result = BenchmarkRunResult(
-                    run_id=run_id,
+                    run_id=str(run_id),
                     start_timestamp=start_timestamp,
                     engine="pyrate",
                     query=query_name,

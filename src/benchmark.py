@@ -40,5 +40,5 @@ class BenchmarkRunResult:
 
 class Benchmark(ABC):
     @abstractmethod
-    def run_all_queries(self):
+    def run_all_queries(self, run_id : int) -> list[BenchmarkRunResult]:
         pass
