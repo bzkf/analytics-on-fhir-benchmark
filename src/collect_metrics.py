@@ -14,6 +14,7 @@ queries = {
     "fs_read_bytes": "rate(container_fs_writes_bytes_total[10s])",
 }
 
+
 def parse_time(t):
     """Allow multiple time formats."""
     try:
@@ -21,22 +22,39 @@ def parse_time(t):
     except ValueError:
         return datetime.datetime.strptime(t, "%Y-%m-%d %H:%M:%S")
 
+
 def main():
     parser = argparse.ArgumentParser(description="Export Prometheus metrics to CSV")
-    parser.add_argument("--start", required=True, help="Start time (ISO8601), e.g. 2025-01-23T10:00:00Z")
-    parser.add_argument("--end", required=False, help="End time (ISO8601). Default = now.")
-    parser.add_argument("--step", default="5s", help="Query resolution step, e.g. 5s or 1m")
-    parser.add_argument("--output", default="container_metrics.csv", help="CSV output file")
+    parser.add_argument(
+        "--start", required=True, help="Start time (ISO8601), e.g. 2025-01-23T10:00:00Z"
+    )
+    parser.add_argument(
+        "--end", required=False, help="End time (ISO8601). Default = now."
+    )
+    parser.add_argument(
+        "--step", default="5s", help="Query resolution step, e.g. 5s or 1m"
+    )
+    parser.add_argument(
+        "--output", default="container_metrics.csv", help="CSV output file"
+    )
+    parser.add_argument(
+        "--population-size", required=True, help="The population size for the run"
+    )
 
     args = parser.parse_args()
 
     start_dt = parse_time(args.start)
-    end_dt = parse_time(args.end) if args.end else datetime.datetime.now(datetime.timezone.utc)
+    end_dt = (
+        parse_time(args.end)
+        if args.end
+        else datetime.datetime.now(datetime.timezone.utc)
+    )
 
     params = {
         "start": start_dt.timestamp(),
         "end": end_dt.timestamp(),
-        "step": args.step
+        "step": args.step,
+        "population_size": args.population_size,
     }
 
     rows = []
@@ -50,21 +68,36 @@ def main():
             continue
 
         for result in r["data"]["result"]:
-            container = result["metric"].get("name", result["metric"].get("container", "unknown"))
+            container = result["metric"].get(
+                "name", result["metric"].get("container", "unknown")
+            )
             for ts, value in result["values"]:
-                rows.append({
-                    "timestamp": ts,
-                    "container": container,
-                    "metric": metric_name,
-                    "value": value
-                })
+                rows.append(
+                    {
+                        "timestamp": ts,
+                        "container": container,
+                        "metric": metric_name,
+                        "value": value,
+                        "synthea_population_size": args.population_size,
+                    }
+                )
 
     with open(args.output, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["timestamp", "container", "metric", "value"])
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "timestamp",
+                "container",
+                "metric",
+                "value",
+                "synthea_population_size",
+            ],
+        )
         writer.writeheader()
         writer.writerows(rows)
 
     print(f"Saved {args.output}")
+
 
 if __name__ == "__main__":
     main()

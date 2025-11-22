@@ -1,7 +1,7 @@
 version: "3"
 
 env:
-  SYNTHEA_POPULATION_SIZE: 1000000
+  SYNTHEA_POPULATION_SIZE: 1000
 
 vars:
   # only here as a comment. not yet used to loop through all at once.
@@ -44,11 +44,12 @@ tasks:
       START_TIME:
         sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
     cmds:
-      - mkdir -p src/results/
-      - docker compose -f compose.blaze.yaml -f compose.pathling.yaml -f compose.trino.yaml -f compose.hapi.yaml -f compose.cadvisor.yaml up -d
-      - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/${SYNTHEA_POPULATION_SIZE}-pathling-import-metrics.csv
+      - mkdir -p src/results/import-resource-metrics/
+      - docker compose -f compose.pathling.yaml -f compose.trino.yaml -f compose.hapi.yaml -f compose.cadvisor.yaml up -d # -f compose.blaze.yaml
+      - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-pathling-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
       # after the import is done, we no longer need the pathling server itself
       - docker compose -f compose.pathling.yaml stop pathling
+      - docker compose -f compose.pathling.yaml logs import-resources
 
   upload-fhir-data:
     vars:
@@ -57,15 +58,15 @@ tasks:
     cmds:
       # hospitalInformation & practitionerInformation are required for referential integrity.
       # blaze
-      - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8083/fhir'
-      - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8083/fhir'
-      - time ./blazectl upload --no-progress --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8083/fhir
-      - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/${SYNTHEA_POPULATION_SIZE}-blaze-import-metrics.csv
+      # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8083/fhir'
+      # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8083/fhir'
+      # - time ./blazectl upload --no-progress --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8083/fhir
+      # - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/${SYNTHEA_POPULATION_SIZE}-blaze-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
       # hapi fhir jpa
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8084/fhir'
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8084/fhir'
       - time ./blazectl upload --no-progress --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8084/fhir
-      - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/${SYNTHEA_POPULATION_SIZE}-hapi-fhir-import-metrics.csv
+      - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-hapi-fhir-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
 
   remove-local-synthea-files:
     cmds:
