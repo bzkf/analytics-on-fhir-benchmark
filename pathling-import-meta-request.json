@@ -1,0 +1,73 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "source",
+      "part": [
+        {
+          "name": "resourceType",
+          "valueCode": "Practitioner"
+        },
+        {
+          "name": "url",
+          "valueUrl": "file:///tmp/import/Practitioner.ndjson"
+        },
+        {
+          "name": "mode",
+          "valueCode": "overwrite"
+        }
+      ]
+    },
+    {
+      "name": "source",
+      "part": [
+        {
+          "name": "resourceType",
+          "valueCode": "PractitionerRole"
+        },
+        {
+          "name": "url",
+          "valueUrl": "file:///tmp/import/PractitionerRole.ndjson"
+        },
+        {
+          "name": "mode",
+          "valueCode": "overwrite"
+        }
+      ]
+    },
+    {
+      "name": "source",
+      "part": [
+        {
+          "name": "resourceType",
+          "valueCode": "Location"
+        },
+        {
+          "name": "url",
+          "valueUrl": "file:///tmp/import/Location.ndjson"
+        },
+        {
+          "name": "mode",
+          "valueCode": "overwrite"
+        }
+      ]
+    },
+    {
+      "name": "source",
+      "part": [
+        {
+          "name": "resourceType",
+          "valueCode": "Organization"
+        },
+        {
+          "name": "url",
+          "valueUrl": "file:///tmp/import/Organization.ndjson"
+        },
+        {
+          "name": "mode",
+          "valueCode": "overwrite"
+        }
+      ]
+    }
+  ]
+}

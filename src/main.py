@@ -1,4 +1,5 @@
 import datetime
+import os
 from pathlib import Path
 import sys
 import time
@@ -11,7 +12,7 @@ from pathling_benchmark import PathlingBenchmark
 from pyrate_benchmark import PyrateBenchmark
 from trino_benchmark import TrinoBenchmark
 
-NUM_RUNS_PER_ENGINE: int = 3  # TODO
+NUM_RUNS_PER_ENGINE: int = 5
 
 
 def main() -> int:
@@ -21,7 +22,14 @@ def main() -> int:
 
     logger.info("Setting up benchmarks")
     trino = TrinoBenchmark()
-    pyrate = PyrateBenchmark()
+    pyrate_hapi = PyrateBenchmark(
+        fhir_server_base_url="http://localhost:8084/fhir/",
+        fhir_server_name="hapi",
+    )
+    pyrate_blaze = PyrateBenchmark(
+        fhir_server_base_url="http://localhost:8083/fhir/",
+        fhir_server_name="blaze",
+    )
     pathling = PathlingBenchmark()
 
     resources_to_count = ["Patient", "Observation", "Encounter", "Condition"]
@@ -58,7 +66,9 @@ def main() -> int:
 
             # trino
             trino_results = trino.run_all_queries(
-                run_id=i, is_warmup=(cold_or_warm == "warm" and i == 0)
+                run_id=i,
+                is_warmup=(cold_or_warm == "warm" and i == 0),
+                cold_or_warm=cold_or_warm,
             )
             results = pd.concat([results, pd.DataFrame(trino_results)])
 
@@ -82,7 +92,9 @@ def main() -> int:
             while retry_count < max_retries:
                 try:
                     pathling_results = pathling.run_all_queries(
-                        run_id=i, is_warmup=(cold_or_warm == "warm" and i == 0)
+                        run_id=i,
+                        is_warmup=(cold_or_warm == "warm" and i == 0),
+                        cold_or_warm=cold_or_warm,
                     )
                     results = pd.concat([results, pd.DataFrame(pathling_results)])
                     if cold_or_warm == "cold":
@@ -103,21 +115,42 @@ def main() -> int:
             logger.info("Done with pathling. Waiting for 30s")
             time.sleep(30)
 
-            # pyrate
-            pyrate_results = pyrate.run_all_queries(
-                run_id=i, is_warmup=(cold_or_warm == "warm" and i == 0)
+            # pyrate Blaze
+            pyrate_blaze_results = pyrate_blaze.run_all_queries(
+                run_id=i,
+                is_warmup=(cold_or_warm == "warm" and i == 0),
+                cold_or_warm=cold_or_warm,
             )
-            results = pd.concat([results, pd.DataFrame(pyrate_results)])
+            results = pd.concat([results, pd.DataFrame(pyrate_blaze_results)])
 
             if cold_or_warm == "cold":
                 logger.info("Restarting blaze for cold run")
                 docker_client.containers.get(
                     "analytics-on-fhir-benchmark-blaze-1"
                 ).restart()
-
             gc.collect()
+            logger.info("Done with pyrate Blaze. Waiting for 30s")
+            time.sleep(30)
 
-            logger.info("Done with pyrate. Waiting for 30s")
+            # pyrate HAPI
+            pyrate_hapi_results = pyrate_hapi.run_all_queries(
+                run_id=i,
+                is_warmup=(cold_or_warm == "warm" and i == 0),
+                cold_or_warm=cold_or_warm,
+            )
+            results = pd.concat([results, pd.DataFrame(pyrate_hapi_results)])
+
+            if cold_or_warm == "cold":
+                logger.info("Restarting HAPI Postgres for cold run")
+                docker_client.containers.get(
+                    "analytics-on-fhir-benchmark-hapi-fhir-postgres-1"
+                ).restart()
+                logger.info("Restarting HAPI Server for cold run")
+                docker_client.containers.get(
+                    "analytics-on-fhir-benchmark-hapi-fhir-1"
+                ).restart()
+            gc.collect()
+            logger.info("Done with pyrate HAPI. Waiting for 30s")
             time.sleep(30)
 
         logger.info("{warm_or_cold} run completed.", warm_or_cold=cold_or_warm)
@@ -133,6 +166,8 @@ def main() -> int:
 
     # append the resource_count_total as a fixed-value column. Makes it easier to later facet by it.
     results["resource_count_total"] = resource_count_total
+
+    results["synthea_population_size"] = os.getenv("SYNTHEA_POPULATION_SIZE", "")
 
     for resource_type in resource_counts.keys():
         results[f"resource_count_{resource_type.lower()}"] = resource_counts[

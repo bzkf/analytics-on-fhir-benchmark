@@ -1,7 +1,7 @@
 version: "3"
 
 env:
-  SYNTHEA_POPULATION_SIZE: 1000
+  SYNTHEA_POPULATION_SIZE: 50000
 
 vars:
   # only here as a comment. not yet used to loop through all at once.
@@ -28,7 +28,6 @@ tasks:
       - blazectl
       - trino-cli-478-executable.jar
 
-  # TODO: could use a task loop to generate synthea data for all sizes at once.
   generate-fhir-data:
     cmds:
       - java -jar synthea-with-dependencies.jar -s 20240711 -cs 20240711 -r 20240711 -p "${SYNTHEA_POPULATION_SIZE}" -c config/synthea.properties --exporter.baseDirectory="./synthea/output-${SYNTHEA_POPULATION_SIZE}/bulk" --exporter.fhir.bulk_data="true"
@@ -45,7 +44,7 @@ tasks:
         sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
     cmds:
       - mkdir -p src/results/import-resource-metrics/
-      - docker compose -f compose.pathling.yaml -f compose.trino.yaml -f compose.hapi.yaml -f compose.cadvisor.yaml up -d # -f compose.blaze.yaml
+      - docker compose -f compose.pathling.yaml -f compose.trino.yaml -f compose.hapi.yaml -f compose.cadvisor.yaml -f compose.blaze.yaml up -d
       - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-pathling-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
       # after the import is done, we no longer need the pathling server itself
       - docker compose -f compose.pathling.yaml stop pathling
@@ -58,13 +57,16 @@ tasks:
     cmds:
       # hospitalInformation & practitionerInformation are required for referential integrity.
       # blaze
-      # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8083/fhir'
-      # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8083/fhir'
-      # - time ./blazectl upload --no-progress --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8083/fhir
-      # - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/${SYNTHEA_POPULATION_SIZE}-blaze-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
+      - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8083/fhir'
+      - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8083/fhir'
       # hapi fhir jpa
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8084/fhir'
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8084/fhir'
+      # actual data upload
+      - echo "Uploading data to Blaze"
+      - time ./blazectl upload --no-progress --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8083/fhir
+      - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-blaze-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
+      - echo "Uploading data to HAPI"
       - time ./blazectl upload --no-progress --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8084/fhir
       - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-hapi-fhir-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
 
@@ -73,9 +75,13 @@ tasks:
       - rm -r synthea/
 
   run-benchmarks:
+    vars:
+      START_TIME:
+        sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
     dir: src/
     cmds:
       - python main.py
+      - python collect_metrics.py --start '{{ .START_TIME }}' --output results/${SYNTHEA_POPULATION_SIZE}-benchmark-resource-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
 
   draw-plots:
     dir: src/

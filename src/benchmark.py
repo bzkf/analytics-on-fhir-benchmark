@@ -37,6 +37,7 @@ class BenchmarkRunResult:
     trino_wall_time_seconds: float = 0
     trino_elapsed_time_seconds: float = 0
     is_warmup: bool = False
+    cold_or_warm: str = "cold"
 
 
 class Benchmark(ABC):

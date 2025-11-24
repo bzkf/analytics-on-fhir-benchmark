@@ -7,6 +7,7 @@ services:
       - --config.file=/etc/prometheus/prometheus.yaml
     volumes:
       - $PWD/config/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+      - prometheus-data:/prometheus:rw
     depends_on:
       - cadvisor
     deploy:
@@ -30,3 +31,6 @@ services:
       resources:
         limits:
           memory: 1g
+
+volumes:
+  prometheus-data: {}

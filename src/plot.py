@@ -32,25 +32,30 @@ for file in results_dir_path.glob("*.csv"):
     logger.info("Adding {file} to dataset", file=file)
     df = pd.concat([df, pd.read_csv(file)])
 
-record_counts = [1000, 5000, 10000, 50000, 100000]
+# record_counts = [1000, 5000, 10000, 50000, 100000]
 
 df["resource_count_total_categorical"] = df["resource_count_total"].astype("category")
 df["engine"] = (
     df["engine"]
     .astype("category")
     .cat.rename_categories(
-        {"pyrate": "FHIR-PYrate", "pathling": "Pathling", "trino": "Trino"}
+        {
+            "pyrate-hapi": "FHIR-PYrate (HAPI)",
+            "pyrate-blaze": "FHIR-PYrate (Blaze)",
+            "pathling": "Pathling",
+            "trino": "Trino",
+        }
     )
 )
 df["query_type"] = df["query_type"].astype("category")
 
-df["record_count_numeric"] = (
-    df["resource_count_patient"]
-    .apply(lambda value: min(record_counts, key=lambda x: abs(x - value)))
-    .astype("int")
-)
+# df["record_count_numeric"] = (
+#     df["resource_count_patient"]
+#     .apply(lambda value: min(record_counts, key=lambda x: abs(x - value)))
+#     .astype("int")
+# )
 
-df["record_count_categorical"] = df["record_count_numeric"].astype("category")
+df["record_count_categorical"] = df["synthea_population_size"].astype("category")
 
 
 logger.info(df)
@@ -176,7 +181,7 @@ for query_type in [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
             ax.text(
                 p.get_x(),
                 p.get_height() * height_multiplier,
-                "{0:.1f}".format(p.get_height()),
+                "{0:.2f}".format(p.get_height()),
                 color="black",
                 rotation="horizontal",
                 size="small",

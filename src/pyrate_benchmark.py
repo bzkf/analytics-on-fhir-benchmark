@@ -12,7 +12,7 @@ PAGE_SIZE: int = 10_000
 
 
 class PyrateBenchmark(Benchmark):
-    def __init__(self):
+    def __init__(self, fhir_server_base_url: str, fhir_server_name: str):
         os.environ["FHIR_USER"] = "any"
         os.environ["FHIR_PASSWORD"] = "any"
 
@@ -20,13 +20,18 @@ class PyrateBenchmark(Benchmark):
 
         self.search = Pirate(
             auth=auth,
-            base_url="http://localhost:8084/fhir/",
+            base_url=fhir_server_base_url,
             print_request_url=False,  # TODO: useful for debugging
         )
+
+        self.fhir_server_name = fhir_server_name
+
         logger.info("Completed initialization.")
 
-    def run_all_queries(self, run_id: int, is_warmup: bool = False) -> list[BenchmarkRunResult]:
-        output_folder_base = Path.cwd() / "results" / "pyrate"
+    def run_all_queries(
+        self, run_id: int, is_warmup: bool = False, cold_or_warm: str = "cold"
+    ) -> list[BenchmarkRunResult]:
+        output_folder_base = Path.cwd() / "results" / f"pyrate-{self.fhir_server_name}"
 
         results = []
         queries = {
@@ -81,7 +86,7 @@ class PyrateBenchmark(Benchmark):
                     "query_name": "hemoglobin",
                     "resource_type": "Observation",
                     "request_params": {
-                        "code-value-quantity": "http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL", #,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
+                        "code-value-quantity": "http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%",  # http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
                         "_include": "Observation:patient",
                         "_count": PAGE_SIZE,
                         "_sort": "_id",
@@ -166,7 +171,7 @@ class PyrateBenchmark(Benchmark):
                     "query_name": "hemoglobin",
                     "resource_type": "Patient",
                     "request_params": {
-                        "_has:Observation:patient:code-value-quantity": "http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL", #,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
+                        "_has:Observation:patient:code-value-quantity": "http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%",  # http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
                         "_summary": "count",
                     },
                     "fhir_paths": [],
@@ -235,7 +240,7 @@ class PyrateBenchmark(Benchmark):
                 result = BenchmarkRunResult(
                     run_id=run_id,
                     start_timestamp=start_timestamp,
-                    engine="pyrate",
+                    engine=f"pyrate-{self.fhir_server_name}",
                     query=query_name,
                     query_type=query_type,
                     total_duration_seconds=duration_total,
@@ -243,6 +248,7 @@ class PyrateBenchmark(Benchmark):
                     fetch_duration_seconds=fetch_duration,
                     post_process_duration_seconds=post_process_duration,
                     is_warmup=is_warmup,
+                    cold_or_warm=cold_or_warm,
                 )
                 results.append(result)
 

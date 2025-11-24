@@ -2,12 +2,19 @@ services:
   blaze:
     image: docker.io/samply/blaze:1.2.0@sha256:7928414bf68d0610587b96a67d2318b789c8531329dead4cec7e295adb4cd86f
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx64g"
+      JAVA_TOOL_OPTIONS: "-Xmx32g" # 32 GiB
       BASE_URL: "http://localhost:8083"
+      DB_BLOCK_CACHE_SIZE: "17179" # 16 GiB in MB
+      # per >https://samply.github.io/blaze/tuning-guide.html>
+      DB_RESOURCE_CACHE_SIZE: "2500000"
     volumes:
       - "blaze-data:/app/data"
     ports:
       - "127.0.0.1:8083:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 64G # 64GiB
 
   wait-for-blaze:
     image: docker.io/curlimages/curl:8.8.0@sha256:73e4d532ea62d7505c5865b517d3704966ffe916609bedc22af6833dc9969bcd

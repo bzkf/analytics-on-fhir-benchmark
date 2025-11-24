@@ -53,7 +53,9 @@ class PathlingBenchmark(Benchmark):
             spark, enable_delta=True, enable_terminology=False
         )
 
-    def run_all_queries(self, run_id: int, is_warmup: bool = False) -> list[BenchmarkRunResult]:
+    def run_all_queries(
+        self, run_id: int, is_warmup: bool = False, cold_or_warm: str = "cold"
+    ) -> list[BenchmarkRunResult]:
         output_folder_base = Path.cwd() / "results" / "pathling"
 
         data = self.pc.read.delta("s3a://fhir/default")
@@ -245,6 +247,7 @@ class PathlingBenchmark(Benchmark):
                     fetch_duration_seconds=0,
                     post_process_duration_seconds=0,
                     is_warmup=is_warmup,
+                    cold_or_warm=cold_or_warm,
                 )
                 results.append(result)
 

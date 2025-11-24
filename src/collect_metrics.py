@@ -64,7 +64,7 @@ def main():
         r = requests.get(PROM_URL, params=params).json()
 
         if r["status"] != "success":
-            print(f"Query failed for metric {metric_name}")
+            print(f"Query failed for metric {metric_name}: {r}")
             continue
 
         for result in r["data"]["result"]:
