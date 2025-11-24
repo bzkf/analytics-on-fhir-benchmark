@@ -177,6 +177,36 @@ class PyrateBenchmark(Benchmark):
                     "fhir_paths": [],
                     "post_process": None,
                 },
+                {
+                    "query_name": "skewed-hot-codes",
+                    "resource_type": "Observation",
+                    "request_params": {
+                        "code": "http://loinc.org|85354-9,http://loinc.org|72514-3',http://loinc.org|29463-7,http://loinc.org|8867-4,http://loinc.org|9279-1",
+                        "_summary": "count",
+                    },
+                    "fhir_paths": [],
+                    "post_process": None,
+                },
+                {
+                    "query_name": "skewed-rare-codes",
+                    "resource_type": "Observation",
+                    "request_params": {
+                        "code": "http://loinc.org|7917-8,http://loinc.org|18752-6',http://loinc.org|26881-3,http://loinc.org|21924-6,http://loinc.org|8310-5",
+                        "_summary": "count",
+                    },
+                    "fhir_paths": [],
+                    "post_process": None,
+                },
+                {
+                    "query_name": "skewed-mixed-codes",
+                    "resource_type": "Observation",
+                    "request_params": {
+                        "code": "http://loinc.org|7917-8,http://loinc.org|18752-6',http://loinc.org|26881-3,http://loinc.org|21924-6,http://loinc.org|8310-5,http://loinc.org|85354-9,http://loinc.org|72514-3',http://loinc.org|29463-7,http://loinc.org|8867-4,http://loinc.org|9279-1",
+                        "_summary": "count",
+                    },
+                    "fhir_paths": [],
+                    "post_process": None,
+                },
             ],
         }
 
