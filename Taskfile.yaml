@@ -1,7 +1,7 @@
 version: "3"
 
 env:
-  SYNTHEA_POPULATION_SIZE: 50000
+  SYNTHEA_POPULATION_SIZE: 1000
 
 vars:
   # only here as a comment. not yet used to loop through all at once.
@@ -68,7 +68,8 @@ tasks:
       - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-blaze-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
       - echo "Uploading data to HAPI"
       - time ./blazectl upload --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8084/fhir
-      - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-hapi-fhir-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
+      - time docker compose -f compose.hapi.yaml exec hapi-fhir-postgres psql -U admin -d hapi -f /tmp/pg-vacuum.sql
+      - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-fhir-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
 
   remove-local-synthea-files:
     cmds:

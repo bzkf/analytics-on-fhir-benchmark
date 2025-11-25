@@ -74,6 +74,7 @@ def main():
             for ts, value in result["values"]:
                 rows.append(
                     {
+                        "start": start_dt,
                         "timestamp": ts,
                         "container": container,
                         "metric": metric_name,
@@ -86,6 +87,7 @@ def main():
         writer = csv.DictWriter(
             f,
             fieldnames=[
+                "start",
                 "timestamp",
                 "container",
                 "metric",

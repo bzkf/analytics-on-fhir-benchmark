@@ -14,7 +14,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 64G # 64GiB
+          memory: 64G
 
   wait-for-blaze:
     image: docker.io/curlimages/curl:8.8.0@sha256:73e4d532ea62d7505c5865b517d3704966ffe916609bedc22af6833dc9969bcd

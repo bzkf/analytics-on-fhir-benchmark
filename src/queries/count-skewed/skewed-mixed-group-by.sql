@@ -11,4 +11,4 @@ WHERE
         -- Rare codes
         '7917-8', '18752-6', '26881-3', '21924-6', '8310-5'
     )
-GROUP BY observation_code_coding.code;
+GROUP BY observation_code_coding.code

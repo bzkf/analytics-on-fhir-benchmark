@@ -8,6 +8,7 @@ class QueryType(Enum):
     AGGREGATE = "aggregate"
     COUNT = "count"
     EXTRACT = "extract"
+    COUNT_SKEWED = "count-skewed"
 
     def __str__(self):
         return str(self.value).lower()

@@ -178,11 +178,9 @@ services:
       AWS_SECRET_ACCESS_KEY: "miniopass"
     entrypoint: ["/bin/sh", "-c"]
     command:
-      # Optimize is skipped since after the initial bulk import the table layout is already optimal
-      # python3 /opt/warehousekeeper/warehousekeeper.py optimize --bucket-name=fhir --database-name-prefix=default/
       - |
         python3 /opt/warehousekeeper/warehousekeeper.py register --bucket-name=fhir --database-name-prefix=default/ --hive-metastore=thrift://hive-metastore:9083
-        python3 /opt/warehousekeeper/warehousekeeper.py vacuum   --bucket-name=fhir --database-name-prefix=default/ --retention-hours=0 --dry-run=false --enforce-retention-duration=false
+        time (python3 /opt/warehousekeeper/warehousekeeper.py optimize --bucket-name=fhir --database-name-prefix=default/; python3 /opt/warehousekeeper/warehousekeeper.py vacuum   --bucket-name=fhir --database-name-prefix=default/ --retention-hours=0 --dry-run=false --enforce-retention-duration=false)
     volumes:
       - $PWD/config/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     depends_on:
@@ -191,12 +189,6 @@ services:
 
   metastore-db:
     image: docker.io/library/postgres:18.1@sha256:28bda6d50590658221007b10573830c941b483e9d1a5bc2713a3f60477df8389
-    ipc: private
-    security_opt:
-      - "no-new-privileges:true"
-    cap_drop:
-      - ALL
-    privileged: false
     restart: unless-stopped
     environment:
       POSTGRES_DB: "metastore"

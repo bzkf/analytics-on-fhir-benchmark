@@ -3,7 +3,7 @@ import os
 import time
 from pathling import PathlingContext, Expression as exp
 from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql.functions import count_distinct
+from pyspark.sql.functions import count_distinct, count
 from loguru import logger
 from pathlib import Path
 
@@ -81,7 +81,7 @@ class PathlingBenchmark(Benchmark):
                     "columns": [
                         exp("Condition.id", "condition_id"),
                         exp(
-                            "Condition.code.coding.where(system='http://snomed.info/sct' and (code='73211009' or code='427089005' or code='44054006')).code",
+                            "Condition.code.coding.where(system='http://snomed.info/sct' and (code='73211009' or code='427089005' or code='44054006')).first().code",
                             "condition_snomed_code",
                         ),
                         exp("Condition.onsetDateTime", "condition_onset"),
@@ -124,7 +124,7 @@ class PathlingBenchmark(Benchmark):
                         ),
                         exp("Observation.id", "observation_id"),
                         exp(
-                            "Observation.code.coding.where(system = 'http://loinc.org').code",
+                            "Observation.code.coding.where(system = 'http://loinc.org').first().code",
                             "loinc_code",
                         ),
                         exp(
@@ -170,11 +170,57 @@ class PathlingBenchmark(Benchmark):
                     "query_name": "hemoglobin",
                 },
             ],
+            QueryType.COUNT_SKEWED: [
+                {
+                    "query_name": "skewed-hot-codes",
+                    "resource_type": "Observation",
+                    "columns": [
+                        exp("Observation.id", "observation_id"),
+                    ],
+                    "filters": [
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='85354-9' or code='72514-3' or code='29463-7' or code='8867-4' or code='9279-1')))",
+                    ],
+                },
+                {
+                    "query_name": "skewed-rare-codes",
+                    "resource_type": "Observation",
+                    "columns": [
+                        exp("Observation.id", "observation_id"),
+                    ],
+                    "filters": [
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='8310-5')))",
+                    ],
+                },
+                {
+                    "query_name": "skewed-mixed-codes",
+                    "resource_type": "Observation",
+                    "columns": [
+                        exp("Observation.id", "observation_id"),
+                    ],
+                    "filters": [
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='85354-9' or code='72514-3' or code='29463-7' or code='8867-4' or code='9279-1' or code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='8310-5')))",
+                    ],
+                },
+                {
+                    "query_name": "skewed-mixed-group-by",
+                    "resource_type": "Observation",
+                    "columns": [
+                        exp("Observation.id", "observation_id"),
+                        exp(
+                            "Observation.code.coding.where(system = 'http://loinc.org').first().code",
+                            "code",
+                        ),
+                    ],
+                    "filters": [
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='85354-9' or code='72514-3' or code='29463-7' or code='8867-4' or code='9279-1' or code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='8310-5')))",
+                    ],
+                },
+            ],
         }
 
         start_timestamp = datetime.datetime.now(datetime.UTC)
 
-        for query_type in QueryType:
+        for query_type in [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT, QueryType.COUNT_SKEWED]:
             output_folder = output_folder_base / str(query_type)
             output_folder.mkdir(parents=True, exist_ok=True)
 
@@ -227,6 +273,11 @@ class PathlingBenchmark(Benchmark):
                             df = df.agg(count_distinct("condition_id"))
                         else:
                             df = df.agg(count_distinct("patient_id"))
+                    elif query_type == QueryType.COUNT_SKEWED:
+                        if query_name == "skewed-mixed-group-by":
+                            df = df.groupBy("code").agg(count("*").alias("count"))
+                        else:
+                            df = df.select(count("*").alias("count"))
                     else:
                         df = df.orderBy("patient_id", ascending=True)
 

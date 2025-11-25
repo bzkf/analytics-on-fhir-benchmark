@@ -9,7 +9,7 @@ from benchmark import QueryType
 
 def compute_relative_duration(group):
     # Find the duration for the FHIR-PYrate engine as the reference
-    reference_row = group[group["engine"] == "FHIR-PYrate"]
+    reference_row = group[group["engine"] == "FHIR-PYrate (Blaze)"]
     if not reference_row.empty:
         reference_duration = reference_row["total_duration_seconds"].values[0]
     else:

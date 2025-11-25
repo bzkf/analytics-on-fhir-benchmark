@@ -34,6 +34,7 @@ services:
     volumes:
       - hapi-fhir-postgres:/var/lib/postgresql/18/docker:rw
       - $PWD/config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - $PWD/pg-vacuum.sql:/tmp/pg-vacuum.sql:ro
 
 volumes:
   hapi-fhir-postgres: {}

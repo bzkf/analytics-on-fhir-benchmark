@@ -86,7 +86,40 @@ class PyrateBenchmark(Benchmark):
                     "query_name": "hemoglobin",
                     "resource_type": "Observation",
                     "request_params": {
-                        "code-value-quantity": "http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%",  # http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
+                        "code-value-quantity": "http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%,http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
+                        "_include": "Observation:patient",
+                        "_count": PAGE_SIZE,
+                        "_sort": "_id",
+                    },
+                    "fhir_paths": [
+                        ("patient_id", "Patient.id"),
+                        ("patient_birthdate", "Patient.birthDate"),
+                        ("observation_id", "Observation.id"),
+                        (
+                            "loinc_code",
+                            "Observation.code.coding.where(system = 'http://loinc.org').code",
+                        ),
+                        (
+                            "value_quantity_ucum_code",
+                            "Observation.valueQuantity.where(system = 'http://unitsofmeasure.org').code",
+                        ),
+                        (
+                            "value_quantity_value",
+                            "Observation.valueQuantity.where(system = 'http://unitsofmeasure.org').value",
+                        ),
+                        ("effective_datetime", "Observation.effectiveDateTime"),
+                        (
+                            "observation_patient_reference",
+                            "Observation.subject.reference",
+                        ),
+                    ],
+                    "post_process": None,
+                },
+                {
+                    "query_name": "hemoglobin-simple",
+                    "resource_type": "Observation",
+                    "request_params": {
+                        "code-value-quantity": "http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%",
                         "_include": "Observation:patient",
                         "_count": PAGE_SIZE,
                         "_sort": "_id",
@@ -171,12 +204,24 @@ class PyrateBenchmark(Benchmark):
                     "query_name": "hemoglobin",
                     "resource_type": "Patient",
                     "request_params": {
-                        "_has:Observation:patient:code-value-quantity": "http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%",  # http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
+                        "_has:Observation:patient:code-value-quantity": "http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%,http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
                         "_summary": "count",
                     },
                     "fhir_paths": [],
                     "post_process": None,
                 },
+                {
+                    "query_name": "hemoglobin-simple",
+                    "resource_type": "Patient",
+                    "request_params": {
+                        "_has:Observation:patient:code-value-quantity": "http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%",
+                        "_summary": "count",
+                    },
+                    "fhir_paths": [],
+                    "post_process": None,
+                },
+            ],
+            QueryType.COUNT_SKEWED: [
                 {
                     "query_name": "skewed-hot-codes",
                     "resource_type": "Observation",
@@ -207,12 +252,12 @@ class PyrateBenchmark(Benchmark):
                     "fhir_paths": [],
                     "post_process": None,
                 },
-            ],
+            ]
         }
 
         start_timestamp = datetime.datetime.now(datetime.UTC)
 
-        for query_type in QueryType:
+        for query_type in [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT]:
             output_folder = output_folder_base / str(query_type)
             output_folder.mkdir(parents=True, exist_ok=True)
 
@@ -232,6 +277,13 @@ class PyrateBenchmark(Benchmark):
                 df: DataFrame | dict[str, DataFrame]
 
                 if query_type == QueryType.COUNT:
+                    if self.fhir_server_name == "hapi" and query_name == "hemoglobin":
+                        logger.warning(
+                            "Skipping count query {query_name} against HAPI FHIR due to known performance issues.",
+                            query_name=query_name,
+                        )
+                        continue
+
                     # special handling for the count case
                     count = self.search.get_bundle_total(
                         resource_type=query["resource_type"],
