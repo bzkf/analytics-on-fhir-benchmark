@@ -1,7 +1,7 @@
 version: "3"
 
 env:
-  SYNTHEA_POPULATION_SIZE: 1000
+  SYNTHEA_POPULATION_SIZE: 100000
 
 vars:
   # only here as a comment. not yet used to loop through all at once.
@@ -11,7 +11,7 @@ vars:
     - 10000
     - 50000
     - 100000
-    - 1000000
+    - 250000
 
 tasks:
   install-dependencies:
@@ -44,7 +44,7 @@ tasks:
         sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
     cmds:
       - mkdir -p src/results/import-resource-metrics/
-      - docker compose -f compose.pathling.yaml -f compose.trino.yaml -f compose.hapi.yaml -f compose.cadvisor.yaml -f compose.blaze.yaml up -d
+      - docker compose -f compose.pathling.yaml -f compose.trino.yaml -f compose.cadvisor.yaml -f compose.blaze.yaml up -d ## -f compose.hapi.yaml
       - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-pathling-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
       # after the import is done, we no longer need the pathling server itself
       - docker compose -f compose.pathling.yaml stop pathling
@@ -60,15 +60,14 @@ tasks:
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8083/fhir'
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8083/fhir'
       # hapi fhir jpa
-      - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8084/fhir'
-      - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8084/fhir'
+      # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8084/fhir'
+      # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8084/fhir'
       # actual data upload
       - echo "Uploading data to Blaze"
       - time ./blazectl upload --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8083/fhir
-      - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-blaze-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
-      - echo "Uploading data to HAPI"
-      - time ./blazectl upload --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8084/fhir
-      - time docker compose -f compose.hapi.yaml exec hapi-fhir-postgres psql -U admin -d hapi -f /tmp/pg-vacuum.sql
+      # - echo "Uploading data to HAPI"
+      # - time ./blazectl upload --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8084/fhir
+      # - time docker compose -f compose.hapi.yaml exec hapi-fhir-postgres psql -U admin -d hapi -f /tmp/pg-vacuum.sql
       - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-fhir-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
 
   remove-local-synthea-files:
@@ -99,6 +98,14 @@ tasks:
       - task: run-benchmarks
       - task: draw-plots
       - task: clean
+
+  generate-and-run:
+    cmds:
+      - task: generate-fhir-data
+      - task: start-servers
+      - task: upload-fhir-data
+      - task: remove-local-synthea-files
+      - task: run-benchmarks
 
   clean:
     cmds:

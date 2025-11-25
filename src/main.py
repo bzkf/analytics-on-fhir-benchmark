@@ -132,26 +132,26 @@ def main() -> int:
             logger.info("Done with pyrate Blaze. Waiting for 30s")
             time.sleep(30)
 
-            # pyrate HAPI
-            pyrate_hapi_results = pyrate_hapi.run_all_queries(
-                run_id=i,
-                is_warmup=(cold_or_warm == "warm" and i == 0),
-                cold_or_warm=cold_or_warm,
-            )
-            results = pd.concat([results, pd.DataFrame(pyrate_hapi_results)])
+            # # pyrate HAPI
+            # pyrate_hapi_results = pyrate_hapi.run_all_queries(
+            #     run_id=i,
+            #     is_warmup=(cold_or_warm == "warm" and i == 0),
+            #     cold_or_warm=cold_or_warm,
+            # )
+            # results = pd.concat([results, pd.DataFrame(pyrate_hapi_results)])
 
-            if cold_or_warm == "cold":
-                logger.info("Restarting HAPI Postgres for cold run")
-                docker_client.containers.get(
-                    "analytics-on-fhir-benchmark-hapi-fhir-postgres-1"
-                ).restart()
-                logger.info("Restarting HAPI Server for cold run")
-                docker_client.containers.get(
-                    "analytics-on-fhir-benchmark-hapi-fhir-1"
-                ).restart()
-            gc.collect()
-            logger.info("Done with pyrate HAPI. Waiting for 30s")
-            time.sleep(30)
+            # if cold_or_warm == "cold":
+            #     logger.info("Restarting HAPI Postgres for cold run")
+            #     docker_client.containers.get(
+            #         "analytics-on-fhir-benchmark-hapi-fhir-postgres-1"
+            #     ).restart()
+            #     logger.info("Restarting HAPI Server for cold run")
+            #     docker_client.containers.get(
+            #         "analytics-on-fhir-benchmark-hapi-fhir-1"
+            #     ).restart()
+            # gc.collect()
+            # logger.info("Done with pyrate HAPI. Waiting for 30s")
+            # time.sleep(30)
 
         logger.info("{warm_or_cold} run completed.", warm_or_cold=cold_or_warm)
 

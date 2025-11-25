@@ -252,7 +252,7 @@ class PyrateBenchmark(Benchmark):
                     "fhir_paths": [],
                     "post_process": None,
                 },
-            ]
+            ],
         }
 
         start_timestamp = datetime.datetime.now(datetime.UTC)
@@ -276,13 +276,14 @@ class PyrateBenchmark(Benchmark):
 
                 df: DataFrame | dict[str, DataFrame]
 
+                if self.fhir_server_name == "hapi" and query_name == "hemoglobin":
+                    logger.warning(
+                        "Skipping query {query_name} against HAPI FHIR due to known performance issues.",
+                        query_name=query_name,
+                    )
+                    continue
+
                 if query_type == QueryType.COUNT:
-                    if self.fhir_server_name == "hapi" and query_name == "hemoglobin":
-                        logger.warning(
-                            "Skipping count query {query_name} against HAPI FHIR due to known performance issues.",
-                            query_name=query_name,
-                        )
-                        continue
 
                     # special handling for the count case
                     count = self.search.get_bundle_total(
