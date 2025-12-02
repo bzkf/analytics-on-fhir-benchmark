@@ -11,7 +11,6 @@ vars:
     - 10000
     - 50000
     - 100000
-    - 250000
 
 tasks:
   install-dependencies:
@@ -37,6 +36,7 @@ tasks:
             mv "$f" "$base"
         done
       - java -jar synthea-with-dependencies.jar -s 20240711 -cs 20240711 -r 20240711 -p "${SYNTHEA_POPULATION_SIZE}" -c config/synthea.properties --exporter.baseDirectory="./synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions" --exporter.fhir.bulk_data="false"
+      - du --si -h synthea/
 
   start-servers:
     vars:
@@ -69,6 +69,7 @@ tasks:
       # - time ./blazectl upload --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8084/fhir
       # - time docker compose -f compose.hapi.yaml exec hapi-fhir-postgres psql -U admin -d hapi -f /tmp/pg-vacuum.sql
       - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-fhir-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
+      - docker system df -v
 
   remove-local-synthea-files:
     cmds:
@@ -80,7 +81,7 @@ tasks:
         sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
     dir: src/
     cmds:
-      - python main.py
+      - python main.py 2>&1 | tee run-benchmark.log
       - python collect_metrics.py --start '{{ .START_TIME }}' --output results/${SYNTHEA_POPULATION_SIZE}-benchmark-resource-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
 
   draw-plots:

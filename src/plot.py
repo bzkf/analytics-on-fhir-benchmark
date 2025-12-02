@@ -108,7 +108,9 @@ sns.set_theme(style="whitegrid", font="sans-serif", context="paper")
 
 df_original = df
 
-for query_type in [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
+for query_type in [
+    QueryType.COUNT_SKEWED
+]:  # [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
     query_type_str = str(query_type)
 
     (output_dir / query_type_str).mkdir(parents=True, exist_ok=True)
@@ -130,6 +132,16 @@ for query_type in [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
     if query_type == QueryType.AGGREGATE:
         col_order = ["observations-by-code"]
         titles = ""
+        col_wrap = None
+
+    if query_type == QueryType.COUNT_SKEWED:
+        col_order = [
+            "skewed-rare-codes",
+            "skewed-mixed-codes",
+            "skewed-hot-codes",
+            "skewed-hot-codes",
+            "skewed-mixed-group-by",
+        ]
         col_wrap = None
 
     g = sns.catplot(

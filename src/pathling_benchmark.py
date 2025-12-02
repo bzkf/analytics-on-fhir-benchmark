@@ -220,7 +220,7 @@ class PathlingBenchmark(Benchmark):
 
         start_timestamp = datetime.datetime.now(datetime.UTC)
 
-        for query_type in [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT, QueryType.COUNT_SKEWED]:
+        for query_type in [QueryType.COUNT_SKEWED]: # [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT, QueryType.COUNT_SKEWED]:
             output_folder = output_folder_base / str(query_type)
             output_folder.mkdir(parents=True, exist_ok=True)
 

@@ -257,7 +257,7 @@ class PyrateBenchmark(Benchmark):
 
         start_timestamp = datetime.datetime.now(datetime.UTC)
 
-        for query_type in [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT]:
+        for query_type in [QueryType.COUNT_SKEWED]: # [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT]:
             output_folder = output_folder_base / str(query_type)
             output_folder.mkdir(parents=True, exist_ok=True)
 
@@ -283,9 +283,8 @@ class PyrateBenchmark(Benchmark):
                     )
                     continue
 
-                if query_type == QueryType.COUNT:
-
-                    # special handling for the count case
+                if query_type == QueryType.COUNT or query_type == QueryType.COUNT_SKEWED:
+                    # special handling for the count cases
                     count = self.search.get_bundle_total(
                         resource_type=query["resource_type"],
                         request_params=query["request_params"],
