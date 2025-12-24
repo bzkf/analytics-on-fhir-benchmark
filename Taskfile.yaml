@@ -1,7 +1,7 @@
 version: "3"
 
 env:
-  SYNTHEA_POPULATION_SIZE: 100000
+  SYNTHEA_POPULATION_SIZE: 150000
 
 vars:
   # only here as a comment. not yet used to loop through all at once.
@@ -11,6 +11,7 @@ vars:
     - 10000
     - 50000
     - 100000
+    - 150000
 
 tasks:
   install-dependencies:
@@ -29,13 +30,13 @@ tasks:
 
   generate-fhir-data:
     cmds:
-      - java -jar synthea-with-dependencies.jar -s 20240711 -cs 20240711 -r 20240711 -p "${SYNTHEA_POPULATION_SIZE}" -c config/synthea.properties --exporter.baseDirectory="./synthea/output-${SYNTHEA_POPULATION_SIZE}/bulk" --exporter.fhir.bulk_data="true"
+      - time java -jar synthea-with-dependencies.jar -s 20240711 -cs 20240711 -r 20240711 -e 20240711 -p "${SYNTHEA_POPULATION_SIZE}" -c config/synthea.properties --exporter.baseDirectory="./synthea/output-${SYNTHEA_POPULATION_SIZE}/bulk" --exporter.fhir.bulk_data="true"
       - |
         for f in ./synthea/output-${SYNTHEA_POPULATION_SIZE}/bulk/fhir/*.*.ndjson; do
             base=$(echo "$f" | sed -E 's/\.[0-9]+//')
             mv "$f" "$base"
         done
-      - java -jar synthea-with-dependencies.jar -s 20240711 -cs 20240711 -r 20240711 -p "${SYNTHEA_POPULATION_SIZE}" -c config/synthea.properties --exporter.baseDirectory="./synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions" --exporter.fhir.bulk_data="false"
+      - time java -jar synthea-with-dependencies.jar -s 20240711 -cs 20240711 -r 20240711 -e 20240711 -p "${SYNTHEA_POPULATION_SIZE}" -c config/synthea.properties --exporter.baseDirectory="./synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions" --exporter.fhir.bulk_data="false"
       - du --si -h synthea/
 
   start-servers:
@@ -44,11 +45,14 @@ tasks:
         sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
     cmds:
       - mkdir -p src/results/import-resource-metrics/
-      - docker compose -f compose.pathling.yaml -f compose.trino.yaml -f compose.cadvisor.yaml -f compose.blaze.yaml up -d ## -f compose.hapi.yaml
+      - docker compose -f compose.pathling.yaml -f compose.trino.yaml -f compose.cadvisor.yaml -f compose.blaze.yaml up -d # -f compose.hapi.yaml
+      - time docker compose -f compose.warehousekeeper.yaml up warehousekeeper
+      - docker compose -f compose.pathling.yaml logs import-resources
       - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-pathling-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
       # after the import is done, we no longer need the pathling server itself
+      # only stop it after the metrics were collected
       - docker compose -f compose.pathling.yaml stop pathling
-      - docker compose -f compose.pathling.yaml logs import-resources
+      - docker system df -v
 
   upload-fhir-data:
     vars:
@@ -63,13 +67,18 @@ tasks:
       # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8084/fhir'
       # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8084/fhir'
       # actual data upload
+      # blaze
       - echo "Uploading data to Blaze"
       - time ./blazectl upload --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8083/fhir
+      - docker system df -v
+      # hapi
       # - echo "Uploading data to HAPI"
       # - time ./blazectl upload --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8084/fhir
+      # - docker system df -v
       # - time docker compose -f compose.hapi.yaml exec hapi-fhir-postgres psql -U admin -d hapi -f /tmp/pg-vacuum.sql
+      # - docker system df -v
+      # collect metrics
       - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-fhir-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
-      - docker system df -v
 
   remove-local-synthea-files:
     cmds:

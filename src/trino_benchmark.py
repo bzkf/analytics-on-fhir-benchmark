@@ -28,7 +28,7 @@ class TrinoBenchmark(Benchmark):
         results = []
         start_timestamp = datetime.datetime.now(datetime.UTC)
 
-        for query_type in [QueryType.COUNT_SKEWED]: # [QueryType.EXTRACT,QueryType.AGGREGATE,QueryType.COUNT,QueryType.COUNT_SKEWED,]:
+        for query_type in [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT]:
             queries_dir_path = queries_base_path / str(query_type)
             logger.info(
                 "Looking for sql files in {queries_dir_path}",

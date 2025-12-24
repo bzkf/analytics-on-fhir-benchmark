@@ -108,9 +108,7 @@ sns.set_theme(style="whitegrid", font="sans-serif", context="paper")
 
 df_original = df
 
-for query_type in [
-    QueryType.COUNT_SKEWED
-]:  # [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
+for query_type in [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
     query_type_str = str(query_type)
 
     (output_dir / query_type_str).mkdir(parents=True, exist_ok=True)
@@ -125,7 +123,7 @@ for query_type in [
         .reset_index(name="p95_duration_seconds")
     )
 
-    col_order = ["gender-age", "diabetes", "hemoglobin"]
+    col_order = ["gender-age", "diabetes", "hemoglobin", "hemoglobin-simple"]
     titles = "{col_name}"
     col_wrap = 2
 

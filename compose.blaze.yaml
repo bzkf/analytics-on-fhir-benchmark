@@ -13,7 +13,7 @@ services:
       - "127.0.0.1:8083:8080"
 
   wait-for-blaze:
-    image: docker.io/curlimages/curl:8.8.0@sha256:73e4d532ea62d7505c5865b517d3704966ffe916609bedc22af6833dc9969bcd
+    image: docker.io/curlimages/curl:8.14.1@sha256:9a1ed35addb45476afa911696297f8e115993df459278ed036182dd2cd22b67b
     ipc: none
     security_opt:
       - "no-new-privileges:true"

@@ -9,6 +9,6 @@ WHERE
     )
     OR observation_code_coding.code IN (
         -- Rare codes
-        '7917-8', '18752-6', '26881-3', '21924-6', '8310-5'
+        '7917-8', '18752-6', '26881-3', '21924-6', '62337-1'
     )
 GROUP BY observation_code_coding.code

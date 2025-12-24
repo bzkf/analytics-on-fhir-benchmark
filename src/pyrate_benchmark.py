@@ -29,7 +29,11 @@ class PyrateBenchmark(Benchmark):
         logger.info("Completed initialization.")
 
     def run_all_queries(
-        self, run_id: int, is_warmup: bool = False, cold_or_warm: str = "cold"
+        self,
+        run_id: int,
+        is_warmup: bool = False,
+        cold_or_warm: str = "cold",
+        only_hemoglobin_simple: bool = False,
     ) -> list[BenchmarkRunResult]:
         output_folder_base = Path.cwd() / "results" / f"pyrate-{self.fhir_server_name}"
 
@@ -236,7 +240,7 @@ class PyrateBenchmark(Benchmark):
                     "query_name": "skewed-rare-codes",
                     "resource_type": "Observation",
                     "request_params": {
-                        "code": "http://loinc.org|7917-8,http://loinc.org|18752-6',http://loinc.org|26881-3,http://loinc.org|21924-6,http://loinc.org|8310-5",
+                        "code": "http://loinc.org|7917-8,http://loinc.org|18752-6',http://loinc.org|26881-3,http://loinc.org|21924-6,http://loinc.org|62337-1",
                         "_summary": "count",
                     },
                     "fhir_paths": [],
@@ -246,7 +250,7 @@ class PyrateBenchmark(Benchmark):
                     "query_name": "skewed-mixed-codes",
                     "resource_type": "Observation",
                     "request_params": {
-                        "code": "http://loinc.org|7917-8,http://loinc.org|18752-6',http://loinc.org|26881-3,http://loinc.org|21924-6,http://loinc.org|8310-5,http://loinc.org|85354-9,http://loinc.org|72514-3',http://loinc.org|29463-7,http://loinc.org|8867-4,http://loinc.org|9279-1",
+                        "code": "http://loinc.org|7917-8,http://loinc.org|18752-6',http://loinc.org|26881-3,http://loinc.org|21924-6,http://loinc.org|62337-1,http://loinc.org|85354-9,http://loinc.org|72514-3',http://loinc.org|29463-7,http://loinc.org|8867-4,http://loinc.org|9279-1",
                         "_summary": "count",
                     },
                     "fhir_paths": [],
@@ -257,7 +261,16 @@ class PyrateBenchmark(Benchmark):
 
         start_timestamp = datetime.datetime.now(datetime.UTC)
 
-        for query_type in [QueryType.COUNT_SKEWED]: # [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT]:
+        # remove the default hemoglobin queries if only the seimple ones are supposed to run
+        if only_hemoglobin_simple:
+            queries[QueryType.COUNT] = [
+                q for q in queries[QueryType.COUNT] if q["query_name"] != "hemoglobin"
+            ]
+            queries[QueryType.EXTRACT] = [
+                q for q in queries[QueryType.EXTRACT] if q["query_name"] != "hemoglobin"
+            ]
+
+        for query_type in [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT]:
             output_folder = output_folder_base / str(query_type)
             output_folder.mkdir(parents=True, exist_ok=True)
 
@@ -283,7 +296,10 @@ class PyrateBenchmark(Benchmark):
                     )
                     continue
 
-                if query_type == QueryType.COUNT or query_type == QueryType.COUNT_SKEWED:
+                if (
+                    query_type == QueryType.COUNT
+                    or query_type == QueryType.COUNT_SKEWED
+                ):
                     # special handling for the count cases
                     count = self.search.get_bundle_total(
                         resource_type=query["resource_type"],

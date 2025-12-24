@@ -12,7 +12,15 @@ from pathling_benchmark import PathlingBenchmark
 from pyrate_benchmark import PyrateBenchmark
 from trino_benchmark import TrinoBenchmark
 
-NUM_RUNS_PER_ENGINE: int = 5
+NUM_RUNS_PER_ENGINE: int = 10
+
+COLD_WARM_SEQUENCE = ["cold"]
+
+RUN_ONLY_HEMOGLOBIN_SIMPLE: bool = False
+ENGINES_TO_TEST = ["blaze", "trino", "pathling"]
+
+# RUN_ONLY_HEMOGLOBIN_SIMPLE: bool = True
+# ENGINES_TO_TEST = ["blaze", "hapi"]
 
 
 def main() -> int:
@@ -50,7 +58,7 @@ def main() -> int:
 
     failed_run_count = 0
 
-    for cold_or_warm in ["cold", "warm"]:
+    for cold_or_warm in COLD_WARM_SEQUENCE:
         logger.info(
             "Running benchmarks in {cold_or_warm} state", cold_or_warm=cold_or_warm
         )
@@ -65,93 +73,100 @@ def main() -> int:
             )
 
             # trino
-            trino_results = trino.run_all_queries(
-                run_id=i,
-                is_warmup=(cold_or_warm == "warm" and i == 0),
-                cold_or_warm=cold_or_warm,
-            )
-            results = pd.concat([results, pd.DataFrame(trino_results)])
+            if "trino" in ENGINES_TO_TEST:
+                trino_results = trino.run_all_queries(
+                    run_id=i,
+                    is_warmup=(cold_or_warm == "warm" and i == 0),
+                    cold_or_warm=cold_or_warm,
+                )
+                results = pd.concat([results, pd.DataFrame(trino_results)])
 
-            if cold_or_warm == "cold":
-                logger.info("Restarting trino and minio containers for cold run")
-                docker_client.containers.get(
-                    "analytics-on-fhir-benchmark-minio-1"
-                ).restart()
-                docker_client.containers.get(
-                    "analytics-on-fhir-benchmark-trino-1"
-                ).restart()
-            gc.collect()
+                if cold_or_warm == "cold":
+                    logger.info("Restarting trino and minio containers for cold run")
+                    docker_client.containers.get(
+                        "analytics-on-fhir-benchmark-minio-1"
+                    ).restart()
+                    docker_client.containers.get(
+                        "analytics-on-fhir-benchmark-trino-1"
+                    ).restart()
+                gc.collect()
 
-            logger.info("Done with trino. Waiting for 30s")
-            time.sleep(30)
+                logger.info("Done with trino. Waiting for 30s")
+                time.sleep(30)
 
             # pathling
-            # we occasionally observe transient OOM issues, so add retries here
-            max_retries = 3
-            retry_count = 0
-            while retry_count < max_retries:
-                try:
-                    pathling_results = pathling.run_all_queries(
-                        run_id=i,
-                        is_warmup=(cold_or_warm == "warm" and i == 0),
-                        cold_or_warm=cold_or_warm,
-                    )
-                    results = pd.concat([results, pd.DataFrame(pathling_results)])
-                    if cold_or_warm == "cold":
-                        logger.info("Resetting pathling/spark for cold run")
-                        pathling.reset()
-                    break
-                except Exception as exc:
-                    logger.error(
-                        "Pathling benchmark failed {error}. Attempt {retry_count} out of {max_retries}.",
-                        retry_count=retry_count,
-                        max_retries=max_retries,
-                        error=exc,
-                    )
-                    failed_run_count += 1
-                    retry_count += 1
+            if "pathling" in ENGINES_TO_TEST:
+                # we occasionally observe transient OOM issues, so add retries here
+                max_retries = 3
+                retry_count = 0
+                while retry_count < max_retries:
+                    try:
+                        pathling_results = pathling.run_all_queries(
+                            run_id=i,
+                            is_warmup=(cold_or_warm == "warm" and i == 0),
+                            cold_or_warm=cold_or_warm,
+                        )
+                        results = pd.concat([results, pd.DataFrame(pathling_results)])
+                        if cold_or_warm == "cold":
+                            logger.info("Resetting pathling/spark for cold run")
+                            pathling.reset()
+                        break
+                    except Exception as exc:
+                        logger.error(
+                            "Pathling benchmark failed {error}. Attempt {retry_count} out of {max_retries}.",
+                            retry_count=retry_count,
+                            max_retries=max_retries,
+                            error=exc,
+                        )
+                        failed_run_count += 1
+                        retry_count += 1
 
-            gc.collect()
-            logger.info("Done with pathling. Waiting for 30s")
-            time.sleep(30)
+                gc.collect()
+                logger.info("Done with pathling. Waiting for 30s")
+                time.sleep(30)
 
-            # pyrate Blaze
-            pyrate_blaze_results = pyrate_blaze.run_all_queries(
-                run_id=i,
-                is_warmup=(cold_or_warm == "warm" and i == 0),
-                cold_or_warm=cold_or_warm,
-            )
-            results = pd.concat([results, pd.DataFrame(pyrate_blaze_results)])
+            if "blaze" in ENGINES_TO_TEST:
+                # pyrate Blaze
+                pyrate_blaze_results = pyrate_blaze.run_all_queries(
+                    run_id=i,
+                    is_warmup=(cold_or_warm == "warm" and i == 0),
+                    cold_or_warm=cold_or_warm,
+                    only_hemoglobin_simple=RUN_ONLY_HEMOGLOBIN_SIMPLE,
+                )
+                results = pd.concat([results, pd.DataFrame(pyrate_blaze_results)])
 
-            if cold_or_warm == "cold":
-                logger.info("Restarting blaze for cold run")
-                docker_client.containers.get(
-                    "analytics-on-fhir-benchmark-blaze-1"
-                ).restart()
-            gc.collect()
-            logger.info("Done with pyrate Blaze. Waiting for 30s")
-            time.sleep(30)
+                if cold_or_warm == "cold":
+                    logger.info("Restarting blaze for cold run")
+                    docker_client.containers.get(
+                        "analytics-on-fhir-benchmark-blaze-1"
+                    ).restart()
+                gc.collect()
+                logger.info("Done with pyrate Blaze. Waiting for 30s")
+                time.sleep(30)
 
-            # # pyrate HAPI
-            # pyrate_hapi_results = pyrate_hapi.run_all_queries(
-            #     run_id=i,
-            #     is_warmup=(cold_or_warm == "warm" and i == 0),
-            #     cold_or_warm=cold_or_warm,
-            # )
-            # results = pd.concat([results, pd.DataFrame(pyrate_hapi_results)])
+            if "hapi" in ENGINES_TO_TEST:
+                # pyrate HAPI
+                pyrate_hapi_results = pyrate_hapi.run_all_queries(
+                    run_id=i,
+                    is_warmup=(cold_or_warm == "warm" and i == 0),
+                    cold_or_warm=cold_or_warm,
+                    only_hemoglobin_simple=RUN_ONLY_HEMOGLOBIN_SIMPLE,
+                )
+                results = pd.concat([results, pd.DataFrame(pyrate_hapi_results)])
 
-            # if cold_or_warm == "cold":
-            #     logger.info("Restarting HAPI Postgres for cold run")
-            #     docker_client.containers.get(
-            #         "analytics-on-fhir-benchmark-hapi-fhir-postgres-1"
-            #     ).restart()
-            #     logger.info("Restarting HAPI Server for cold run")
-            #     docker_client.containers.get(
-            #         "analytics-on-fhir-benchmark-hapi-fhir-1"
-            #     ).restart()
-            # gc.collect()
-            # logger.info("Done with pyrate HAPI. Waiting for 30s")
-            # time.sleep(30)
+                if cold_or_warm == "cold":
+                    logger.info("Restarting HAPI Postgres for cold run")
+                    docker_client.containers.get(
+                        "analytics-on-fhir-benchmark-hapi-fhir-postgres-1"
+                    ).restart()
+                    time.sleep(30)
+                    logger.info("Restarting HAPI Server for cold run")
+                    docker_client.containers.get(
+                        "analytics-on-fhir-benchmark-hapi-fhir-1"
+                    ).restart()
+                gc.collect()
+                logger.info("Done with pyrate HAPI. Waiting for 30s")
+                time.sleep(30)
 
         logger.info("{warm_or_cold} run completed.", warm_or_cold=cold_or_warm)
 

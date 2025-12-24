@@ -18,7 +18,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 8G
 
   wait-for-minio:
     image: docker.io/curlimages/curl:8.14.1@sha256:9a1ed35addb45476afa911696297f8e115993df459278ed036182dd2cd22b67b
@@ -51,9 +51,6 @@ services:
     ipc: none
     security_opt:
       - "no-new-privileges:true"
-    depends_on:
-      wait-for-minio:
-        condition: service_completed_successfully
     entrypoint: ["/bin/bash", "-c"]
     environment:
       AWS_ACCESS_KEY_ID: admin
@@ -66,6 +63,9 @@ services:
       resources:
         limits:
           memory: 1G
+    depends_on:
+      wait-for-minio:
+        condition: service_completed_successfully
 
   pathling:
     image: docker.io/aehrc/pathling:7.2.0@sha256:31b5ef50294e55136ae2278c2d0b8435a96a15b5da040ec785effb51875d08d3
@@ -77,7 +77,7 @@ services:
     privileged: false
     environment:
       JAVA_TOOL_OPTIONS: |
-        -Xmx60g
+        -Xmx56g
         -Xss64m
         -XX:G1HeapRegionSize=32M
         -XX:+ExplicitGCInvokesConcurrent
@@ -100,9 +100,9 @@ services:
       fs.s3a.secret.key: "miniopass"
       fs.s3a.impl: "org.apache.hadoop.fs.s3a.S3AFileSystem"
       fs.s3a.path.style.access: "true"
-      # spark.sql.parquet.compression.codec: "zstd"
-      # spark.io.compression.codec: "zstd"
-      # parquet.compression.codec.zstd.level: "9"
+      spark.sql.parquet.compression.codec: "zstd"
+      spark.io.compression.codec: "zstd"
+      parquet.compression.codec.zstd.level: "9"
       spark.serializer: "org.apache.spark.serializer.KryoSerializer"
       spark.master: "local[*]"
       spark.driver.memory: 48g
@@ -112,11 +112,11 @@ services:
     volumes:
       - $PWD/synthea/output-${SYNTHEA_POPULATION_SIZE:?}/bulk/fhir/:/tmp/import/:ro
     depends_on:
-      wait-for-minio:
+      create-default-buckets:
         condition: service_completed_successfully
 
   wait-for-pathling:
-    image: docker.io/curlimages/curl:8.8.0@sha256:73e4d532ea62d7505c5865b517d3704966ffe916609bedc22af6833dc9969bcd
+    image: docker.io/curlimages/curl:8.14.1@sha256:9a1ed35addb45476afa911696297f8e115993df459278ed036182dd2cd22b67b
     ipc: none
     security_opt:
       - "no-new-privileges:true"
@@ -161,8 +161,8 @@ services:
       wait-for-pathling:
         condition: service_completed_successfully
 
-  warehousekeeper:
-    image: ghcr.io/miracum/util-images/warehousekeeper:v0.1.13@sha256:7f2a1a86f9ee27d98682aaec4a5cfd3615c4278cef8906ffb3e81df57eb21cd9
+  wait-for-import-to-complete:
+    image: docker.io/curlimages/curl:8.14.1@sha256:9a1ed35addb45476afa911696297f8e115993df459278ed036182dd2cd22b67b
     ipc: none
     security_opt:
       - "no-new-privileges:true"
@@ -170,19 +170,9 @@ services:
       - ALL
     privileged: false
     restart: "no"
-    environment:
-      AWS_ALLOW_HTTP: "1"
-      AWS_REGION: "eu-central-1"
-      AWS_ENDPOINT_URL: "http://minio:9000"
-      AWS_ACCESS_KEY_ID: "admin"
-      AWS_SECRET_ACCESS_KEY: "miniopass"
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - |
-        python3 /opt/warehousekeeper/warehousekeeper.py register --bucket-name=fhir --database-name-prefix=default/ --hive-metastore=thrift://hive-metastore:9083
-        time (python3 /opt/warehousekeeper/warehousekeeper.py optimize --bucket-name=fhir --database-name-prefix=default/; python3 /opt/warehousekeeper/warehousekeeper.py vacuum   --bucket-name=fhir --database-name-prefix=default/ --retention-hours=0 --dry-run=false --enforce-retention-duration=false)
-    volumes:
-      - $PWD/config/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
+      - echo "all done"
     depends_on:
       import-resources:
         condition: service_completed_successfully

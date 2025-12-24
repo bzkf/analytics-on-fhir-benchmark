@@ -188,7 +188,7 @@ class PathlingBenchmark(Benchmark):
                         exp("Observation.id", "observation_id"),
                     ],
                     "filters": [
-                        "Observation.code.coding.exists(system='http://loinc.org' and (code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='8310-5')))",
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='62337-1')))",
                     ],
                 },
                 {
@@ -198,7 +198,7 @@ class PathlingBenchmark(Benchmark):
                         exp("Observation.id", "observation_id"),
                     ],
                     "filters": [
-                        "Observation.code.coding.exists(system='http://loinc.org' and (code='85354-9' or code='72514-3' or code='29463-7' or code='8867-4' or code='9279-1' or code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='8310-5')))",
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='85354-9' or code='72514-3' or code='29463-7' or code='8867-4' or code='9279-1' or code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='62337-1')))",
                     ],
                 },
                 {
@@ -212,7 +212,7 @@ class PathlingBenchmark(Benchmark):
                         ),
                     ],
                     "filters": [
-                        "Observation.code.coding.exists(system='http://loinc.org' and (code='85354-9' or code='72514-3' or code='29463-7' or code='8867-4' or code='9279-1' or code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='8310-5')))",
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='85354-9' or code='72514-3' or code='29463-7' or code='8867-4' or code='9279-1' or code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='62337-1')))",
                     ],
                 },
             ],
@@ -220,7 +220,7 @@ class PathlingBenchmark(Benchmark):
 
         start_timestamp = datetime.datetime.now(datetime.UTC)
 
-        for query_type in [QueryType.COUNT_SKEWED]: # [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT, QueryType.COUNT_SKEWED]:
+        for query_type in [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT]:
             output_folder = output_folder_base / str(query_type)
             output_folder.mkdir(parents=True, exist_ok=True)
 
