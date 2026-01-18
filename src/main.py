@@ -18,9 +18,11 @@ COLD_WARM_SEQUENCE = ["cold"]
 
 RUN_ONLY_HEMOGLOBIN_SIMPLE: bool = False
 ENGINES_TO_TEST = ["blaze", "trino", "pathling"]
+BENCHMARK_RUN_FILE_PREFIX = ""
 
 # RUN_ONLY_HEMOGLOBIN_SIMPLE: bool = True
 # ENGINES_TO_TEST = ["blaze", "hapi"]
+# BENCHMARK_RUN_FILE_PREFIX = "server-vs-server-"
 
 
 def main() -> int:
@@ -191,7 +193,7 @@ def main() -> int:
 
     results.to_csv(
         output_dir
-        / f"{time.strftime("%Y%m%d-%H%M%S")}-{resource_count_total}-benchmark-results.csv",
+        / f"{BENCHMARK_RUN_FILE_PREFIX}{time.strftime("%Y%m%d-%H%M%S")}-{resource_count_total}-benchmark-results.csv",
         index=False,
     )
     return 0

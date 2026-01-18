@@ -13,7 +13,7 @@ LEFT JOIN UNNEST(observation.code.coding) AS observation_code_coding ON TRUE
 WHERE
     observation_code_coding.system = 'http://loinc.org'
     AND valuequantity.system = 'http://unitsofmeasure.org'
-    AND (
+    AND ((
         observation_code_coding.code = '718-7'
         AND valuequantity.code = 'g/dL'
         AND valuequantity.value > 25.0
@@ -22,5 +22,5 @@ WHERE
         observation_code_coding.code IN ('17856-6', '4548-4', '4549-2')
         AND valuequantity.code = '%'
         AND valuequantity.value > 5
-    )
+    ))
 ORDER BY patient.id ASC

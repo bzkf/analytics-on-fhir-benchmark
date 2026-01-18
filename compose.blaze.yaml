@@ -5,8 +5,8 @@ services:
       JAVA_TOOL_OPTIONS: "-Xmx64g"
       BASE_URL: "http://localhost:8083"
       DB_BLOCK_CACHE_SIZE: "17179" # 16 GiB in MB
-      # per >https://samply.github.io/blaze/tuning-guide.html>
-      DB_RESOURCE_CACHE_SIZE: "2500000"
+      # per <https://samply.github.io/blaze/production-configuration.html>
+      DB_RESOURCE_CACHE_SIZE: "10000000"
     volumes:
       - "blaze-data:/app/data"
     ports:
