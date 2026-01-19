@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 
 df = pd.DataFrame()
 
-results_dir_path = Path.cwd() / "results" / "import-resource-metrics"
+metrics_dir_path = Path.cwd() / "results" / "import-resource-metrics"
 
-for file in results_dir_path.glob("*.csv"):
+for file in metrics_dir_path.glob("*.csv"):
     if file.name.startswith("_"):
         logger.info("Skipping {file}", file=file)
         continue
@@ -33,10 +33,20 @@ df = df[
     )
 ]
 
+rename_map = {
+    "minio": "MinIO",
+    "hapi-fhir": "HAPI FHIR Server",
+    "hapi-fhir-postgres": "HAPI FHIR PostgreSQL DB",
+    "pathling": "Pathling Server",
+    "blaze": "Blaze Server",
+    "warehousekeeper": "Delta Lake OPTIMIZE & VACUUM",
+}
+
 df["container"] = (
     df["container"]
     .str.replace("analytics-on-fhir-benchmark-", "", regex=False)
     .str.replace("-1", "", regex=False)
+    .replace(rename_map)
 )
 
 # the pathling import and the fhir server import were started manually, so there's
@@ -117,17 +127,21 @@ for metric in metrics:
         aspect=1.3,
     )
 
-    g.set_titles("Population size: {col_name}")
+    g.set_titles("Synthea record count: {col_name}")
     g.set_axis_labels("Normalized runtime", metric["y_axis_label"])
+    g._legend.set_title("Container")
 
     sns.move_legend(
         g,
-        loc="upper left",
-        bbox_to_anchor=(0.15, 0.97),
-        ncol=2,
+        loc="upper center",
+        bbox_to_anchor=(0.43, 1.07),
+        bbox_transform=g.figure.transFigure,
+        ncol=3,
         frameon=True,
         columnspacing=1,
         handletextpad=0,
     )
 
-    plt.savefig(f"{metric['metric']}-plot.png", dpi=300, bbox_inches="tight")
+    results_dir = Path.cwd() / "results" / "plots" / "import-resource-metrics"
+    results_dir.mkdir(parents=True, exist_ok=True)
+    plt.savefig(results_dir /f"{metric['metric']}-plot.png", dpi=300, bbox_inches="tight")
