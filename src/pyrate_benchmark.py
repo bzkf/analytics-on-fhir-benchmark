@@ -8,7 +8,7 @@ from pandas import DataFrame
 
 from benchmark import Benchmark, BenchmarkRunResult, QueryType
 
-PAGE_SIZE: int = 10_000
+PAGE_SIZE: int = 1_000
 
 
 class PyrateBenchmark(Benchmark):
