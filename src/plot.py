@@ -22,7 +22,7 @@ def compute_relative_duration(group):
 
 df = pd.DataFrame()
 
-results_dir_path = Path.cwd() / "results" / "benchmark-runs"
+results_dir_path = Path.cwd() / "results" / "benchmark-runs" / "server-vs-server"
 
 for file in results_dir_path.glob("*.csv"):
     if file.stem.startswith("_"):
@@ -31,8 +31,6 @@ for file in results_dir_path.glob("*.csv"):
 
     logger.info("Adding {file} to dataset", file=file)
     df = pd.concat([df, pd.read_csv(file)])
-
-# record_counts = [1000, 5000, 10000, 50000, 100000]
 
 df["resource_count_total_categorical"] = df["resource_count_total"].astype("category")
 df["engine"] = (
@@ -48,12 +46,6 @@ df["engine"] = (
     )
 )
 df["query_type"] = df["query_type"].astype("category")
-
-# df["record_count_numeric"] = (
-#     df["resource_count_patient"]
-#     .apply(lambda value: min(record_counts, key=lambda x: abs(x - value)))
-#     .astype("int")
-# )
 
 df["record_count_categorical"] = df["synthea_population_size"].astype("category")
 
