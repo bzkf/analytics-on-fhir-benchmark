@@ -1,6 +1,6 @@
 services:
   hapi-fhir:
-    image: docker.io/hapiproject/hapi:v8.4.0-3@sha256:429136d44bb60456f7ca91f906cfcf1a43f3c17ff296edd8e9070af7876b309a
+    image: docker.io/hapiproject/hapi:v8.6.0-1@sha256:7611e4d6601f35dd8c223ed2ed47a2807be06976f71b2e5990e6541bbc90c16f
     restart: on-failure
     environment:
       SPRING_DATASOURCE_URL: "jdbc:postgresql://hapi-fhir-postgres:5432/hapi"
