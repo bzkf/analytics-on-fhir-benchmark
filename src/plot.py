@@ -22,7 +22,7 @@ def compute_relative_duration(group):
 
 df = pd.DataFrame()
 
-results_dir_path = Path.cwd() / "results" / "benchmark-runs" / "server-vs-server"
+results_dir_path = Path.cwd() / "results" / "benchmark-runs" / "all-engines"
 
 for file in results_dir_path.glob("*.csv"):
     if file.stem.startswith("_"):

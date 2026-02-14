@@ -45,6 +45,8 @@ class PathlingBenchmark(Benchmark):
                 "spark.hadoop.fs.s3a.path.style.access",
                 "true",
             )
+            .config("spark.sql.shuffle.partitions", "200")
+            .config("spark.sql.adaptive.enabled", "true")
             .config("spark.local.dir", Path.cwd() / "spark-tmp")
             .getOrCreate()
         )
@@ -70,6 +72,12 @@ class PathlingBenchmark(Benchmark):
                         exp("Patient.id", "patient_id"),
                         exp("Patient.birthDate", "patient_birthdate"),
                         exp("Patient.gender", "patient_gender"),
+                    ],
+                    "count_columns": [
+                        exp(
+                            "Patient.id",
+                            "column_to_count",
+                        ),
                     ],
                     "filters": [
                         "Patient.gender = 'female' and Patient.birthDate >= @1970-01-01"
@@ -102,6 +110,12 @@ class PathlingBenchmark(Benchmark):
                         exp(
                             "Condition.subject.resolve().ofType(Patient).birthDate",
                             "patient_birthdate",
+                        ),
+                    ],
+                    "count_columns": [
+                        exp(
+                            "Condition.id",
+                            "column_to_count",
                         ),
                     ],
                     "filters": [
@@ -139,6 +153,12 @@ class PathlingBenchmark(Benchmark):
                         exp(
                             "Observation.subject.reference",
                             "observation_patient_reference",
+                        ),
+                    ],
+                    "count_columns": [
+                        exp(
+                            "Observation.subject.reference",
+                            "column_to_count",
                         ),
                     ],
                     "filters": [
@@ -263,16 +283,12 @@ class PathlingBenchmark(Benchmark):
 
                     df = data.extract(
                         resource_type=query["resource_type"],
-                        columns=query["columns"],
+                        columns=query["count_columns"] if query_type == QueryType.COUNT else query["columns"],
                         filters=query["filters"],
                     )
 
                     if query_type == QueryType.COUNT:
-                        # in case of the diabetes query, count the condition id, not the patient id
-                        if query_name == "diabetes":
-                            df = df.agg(count_distinct("condition_id"))
-                        else:
-                            df = df.agg(count_distinct("patient_id"))
+                            df = df.agg(count_distinct("column_to_count"))
                     elif query_type == QueryType.COUNT_SKEWED:
                         if query_name == "skewed-mixed-group-by":
                             df = df.groupBy("code").agg(count("*").alias("count"))

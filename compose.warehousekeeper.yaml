@@ -18,7 +18,7 @@ services:
     command:
       - |
         python3 /opt/warehousekeeper/warehousekeeper.py register --bucket-name=fhir --database-name-prefix=default/ --hive-metastore=thrift://hive-metastore:9083
-      # python3 /opt/warehousekeeper/warehousekeeper.py optimize --bucket-name=fhir --database-name-prefix=default/
-      # python3 /opt/warehousekeeper/warehousekeeper.py vacuum   --bucket-name=fhir --database-name-prefix=default/ --retention-hours=0 --dry-run=false --enforce-retention-duration=false
+        python3 /opt/warehousekeeper/warehousekeeper.py optimize --bucket-name=fhir --database-name-prefix=default/
+        python3 /opt/warehousekeeper/warehousekeeper.py vacuum   --bucket-name=fhir --database-name-prefix=default/ --retention-hours=0 --dry-run=false --enforce-retention-duration=false
     volumes:
       - $PWD/config/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro

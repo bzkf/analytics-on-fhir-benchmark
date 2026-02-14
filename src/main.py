@@ -12,17 +12,21 @@ from pathling_benchmark import PathlingBenchmark
 from pyrate_benchmark import PyrateBenchmark
 from trino_benchmark import TrinoBenchmark
 
-NUM_RUNS_PER_ENGINE: int = 10
+NUM_RUNS_PER_ENGINE: int = 5
 
-COLD_WARM_SEQUENCE = ["cold"]
+COLD_WARM_SEQUENCE = ["warm"]
+
+# RUN_ONLY_HEMOGLOBIN_SIMPLE: bool = False
+# ENGINES_TO_TEST = ["pathling"]
+# BENCHMARK_RUN_PREFIX = "only-pathling"
 
 RUN_ONLY_HEMOGLOBIN_SIMPLE: bool = False
-ENGINES_TO_TEST = ["blaze", "trino", "pathling"]
-BENCHMARK_RUN_FILE_PREFIX = ""
+ENGINES_TO_TEST = ["blaze"] # "blaze", "trino", "pathling"]
+BENCHMARK_RUN_PREFIX = "blaze-warm"
 
 # RUN_ONLY_HEMOGLOBIN_SIMPLE: bool = True
 # ENGINES_TO_TEST = ["blaze", "hapi"]
-# BENCHMARK_RUN_FILE_PREFIX = "server-vs-server-"
+# BENCHMARK_RUN_PREFIX = "server-vs-server"
 
 
 def main() -> int:
@@ -99,7 +103,7 @@ def main() -> int:
             # pathling
             if "pathling" in ENGINES_TO_TEST:
                 # we occasionally observe transient OOM issues, so add retries here
-                max_retries = 3
+                max_retries = 5
                 retry_count = 0
                 while retry_count < max_retries:
                     try:
@@ -176,7 +180,7 @@ def main() -> int:
         "All benchmarks completed. Failed runs: {failed_run_count}",
         failed_run_count=failed_run_count,
     )
-    output_dir = Path.cwd() / "results" / "benchmark-runs"
+    output_dir = Path.cwd() / "results" / "benchmark-runs" / BENCHMARK_RUN_PREFIX
     output_dir.mkdir(parents=True, exist_ok=True)
 
     results["benchmark_timestamp"] = benchmark_timestamp
@@ -193,7 +197,7 @@ def main() -> int:
 
     results.to_csv(
         output_dir
-        / f"{BENCHMARK_RUN_FILE_PREFIX}{time.strftime("%Y%m%d-%H%M%S")}-{resource_count_total}-benchmark-results.csv",
+        / f"{time.strftime("%Y%m%d-%H%M%S")}-{resource_count_total}-benchmark-results.csv",
         index=False,
     )
     return 0

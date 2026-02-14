@@ -16,7 +16,7 @@ sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/b
 #    tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 apt-get update
-apt-get install -y python3-pip python3.12-venv openjdk-21-jre-headless
+apt-get install -y python3-pip python3.12-venv openjdk-17-jre-headless
 
 
 # use an older version as cadvisor isn't compatible yet with Docker 29+
