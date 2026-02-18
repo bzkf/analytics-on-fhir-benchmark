@@ -7,8 +7,7 @@ from pyspark.sql.functions import count_distinct, count
 from loguru import logger
 from pathlib import Path
 
-from benchmark import Benchmark, BenchmarkRunResult, QueryType
-
+from benchmark import Benchmark, BenchmarkRunResult, QueryType, QUERY_TYPES_TO_RUN
 
 class PathlingBenchmark(Benchmark):
     def __init__(self):
@@ -240,7 +239,7 @@ class PathlingBenchmark(Benchmark):
 
         start_timestamp = datetime.datetime.now(datetime.UTC)
 
-        for query_type in [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT]:
+        for query_type in QUERY_TYPES_TO_RUN:
             output_folder = output_folder_base / str(query_type)
             output_folder.mkdir(parents=True, exist_ok=True)
 

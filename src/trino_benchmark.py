@@ -5,7 +5,7 @@ from pathlib import Path
 from loguru import logger
 import time
 
-from benchmark import Benchmark, BenchmarkRunResult, QueryType
+from benchmark import Benchmark, BenchmarkRunResult, QueryType, QUERY_TYPES_TO_RUN
 
 
 class TrinoBenchmark(Benchmark):
@@ -28,7 +28,7 @@ class TrinoBenchmark(Benchmark):
         results = []
         start_timestamp = datetime.datetime.now(datetime.UTC)
 
-        for query_type in [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT]:
+        for query_type in QUERY_TYPES_TO_RUN:
             queries_dir_path = queries_base_path / str(query_type)
             logger.info(
                 "Looking for sql files in {queries_dir_path}",

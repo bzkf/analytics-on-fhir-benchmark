@@ -3,7 +3,6 @@ from dataclasses import dataclass
 import datetime
 from enum import Enum
 
-
 class QueryType(Enum):
     AGGREGATE = "aggregate"
     COUNT = "count"
@@ -13,6 +12,9 @@ class QueryType(Enum):
     def __str__(self):
         return str(self.value).lower()
 
+# QUERY_TYPES_TO_RUN =  [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT]
+
+QUERY_TYPES_TO_RUN = [QueryType.COUNT_SKEWED]
 
 class QueryEngine(Enum):
     PATHLING = "pathling"

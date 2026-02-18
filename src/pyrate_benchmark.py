@@ -6,7 +6,7 @@ from pathlib import Path
 from loguru import logger
 from pandas import DataFrame
 
-from benchmark import Benchmark, BenchmarkRunResult, QueryType
+from benchmark import Benchmark, BenchmarkRunResult, QueryType, QUERY_TYPES_TO_RUN
 
 PAGE_SIZE: int = 1_000
 
@@ -270,7 +270,7 @@ class PyrateBenchmark(Benchmark):
                 q for q in queries[QueryType.EXTRACT] if q["query_name"] != "hemoglobin"
             ]
 
-        for query_type in [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT]:
+        for query_type in QUERY_TYPES_TO_RUN:
             output_folder = output_folder_base / str(query_type)
             output_folder.mkdir(parents=True, exist_ok=True)
 
