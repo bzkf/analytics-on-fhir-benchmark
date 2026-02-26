@@ -36,7 +36,7 @@ df = df[
 rename_map = {
     "minio": "MinIO",
     "hapi-fhir": "HAPI FHIR Server",
-    "hapi-fhir-postgres": "HAPI FHIR PostgreSQL DB",
+    "hapi-fhir-postgres": "HAPI FHIR PostgreSQL",
     "pathling": "Pathling Server",
     "blaze": "Blaze Server",
     "warehousekeeper": "Delta Lake OPTIMIZE & VACUUM",
@@ -125,6 +125,7 @@ for metric in metrics:
         kind="line",
         height=4,
         aspect=1.3,
+        palette="Set2",
     )
 
     g.set_titles("Synthea record count: {col_name}")
@@ -141,6 +142,35 @@ for metric in metrics:
         columnspacing=1,
         handletextpad=0,
     )
+
+    # Get all axes in the FacetGrid
+    axes = g.axes.flatten()
+
+    ncols = g._ncol
+    nplots = len(axes)
+
+    remainder = nplots % ncols
+    if remainder != 0:
+        last_row_axes = axes[-remainder:]
+
+        # Use actual positions from a full row to infer spacing
+        full_row = axes[-ncols:-remainder] if remainder != 0 else axes[-ncols:]
+        left_full = full_row[0].get_position().x0
+        right_full = full_row[-1].get_position().x1
+
+        full_row_width = right_full - left_full
+        target_left = 0.5 - full_row_width / 2
+
+        # Current left edge of the last row
+        left_last = last_row_axes[0].get_position().x0
+
+        dx = target_left - left_last
+
+        dx -= 0.07
+
+        for ax in last_row_axes:
+            pos = ax.get_position()
+            ax.set_position([pos.x0 + dx, pos.y0, pos.width, pos.height])
 
     results_dir = Path.cwd() / "results" / "plots" / "import-resource-metrics"
     results_dir.mkdir(parents=True, exist_ok=True)

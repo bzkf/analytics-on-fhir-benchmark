@@ -6,6 +6,14 @@ from loguru import logger
 
 from benchmark import QueryType
 
+BENCHMARK_CATEGORY = "skewed"
+
+FACETS = [
+    "gender-age",
+    "diabetes",
+    "hemoglobin"
+]
+
 
 def compute_relative_duration(group):
     # Find the duration for the FHIR-PYrate engine as the reference
@@ -22,7 +30,7 @@ def compute_relative_duration(group):
 
 df = pd.DataFrame()
 
-results_dir_path = Path.cwd() / "results" / "benchmark-runs" / "all-engines"
+results_dir_path = Path.cwd() / "results" / "benchmark-runs" / BENCHMARK_CATEGORY
 
 for file in results_dir_path.glob("*.csv"):
     if file.stem.startswith("_"):
@@ -48,6 +56,9 @@ df["engine"] = (
 df["query_type"] = df["query_type"].astype("category")
 
 df["record_count_categorical"] = df["synthea_population_size"].astype("category")
+
+# exclude any warmup runs
+df = df[~df["is_warmup"]]
 
 
 logger.info(df)
@@ -93,14 +104,14 @@ if not os.getenv("SKIP_RELATIVE_PERFORMANCE_COMPARISON", False):
 
     logger.info(mean_relative_performance)
 
-output_dir = results_dir / "plots"
+output_dir = results_dir / "plots" / BENCHMARK_CATEGORY
 output_dir.mkdir(parents=True, exist_ok=True)
 
 sns.set_theme(style="whitegrid", font="sans-serif", context="paper")
 
 df_original = df
 
-for query_type in [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
+for query_type in [QueryType.COUNT_SKEWED]: # QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE,
     query_type_str = str(query_type)
 
     (output_dir / query_type_str).mkdir(parents=True, exist_ok=True)
@@ -115,7 +126,7 @@ for query_type in [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
         .reset_index(name="p95_duration_seconds")
     )
 
-    col_order = ["gender-age", "diabetes", "hemoglobin", "hemoglobin-simple"]
+    col_order = FACETS
     titles = "{col_name}"
     col_wrap = 2
 
@@ -129,8 +140,7 @@ for query_type in [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
             "skewed-rare-codes",
             "skewed-mixed-codes",
             "skewed-hot-codes",
-            "skewed-hot-codes",
-            "skewed-mixed-group-by",
+            # "skewed-mixed-group-by",
         ]
         col_wrap = None
 
@@ -179,10 +189,10 @@ for query_type in [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
         handles, labels = ax.get_legend_handles_labels()
 
         for p in ax.patches:
-            height_multiplier = 1.9 if query_type == QueryType.COUNT else 1.65
+            height_multiplier = 1.5 if query_type == QueryType.COUNT else 2
             ax.text(
-                p.get_x(),
-                p.get_height() * height_multiplier,
+                p.get_x() + 0.01,
+                p.get_height() * height_multiplier,  # 0.015,
                 "{0:.2f}".format(p.get_height()),
                 color="black",
                 rotation="horizontal",
@@ -217,5 +227,8 @@ for query_type in [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
             ax.scatter(x, y, facecolors="red", marker="+", linewidths=1)
 
     g.figure.savefig(
-        output_dir / query_type_str / "duration-by-resource-count-facetted-by-query.png"
+        output_dir
+        / query_type_str
+        / "duration-by-resource-count-facetted-by-query.png",
+        dpi=300,
     )
