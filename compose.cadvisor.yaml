@@ -1,6 +1,6 @@
 services:
   prometheus:
-    image: docker.io/prom/prometheus:v3.7.3@sha256:49214755b6153f90a597adcbff0252cc61069f8ab69ce8411285cd4a560e8038
+    image: docker.io/prom/prometheus:v3.10.0@sha256:4a61322ac1103a0e3aea2a61ef1718422a48fa046441f299d71e660a3bc71ae9
     ports:
       - 127.0.0.1:9090:9090
     command:
@@ -16,7 +16,7 @@ services:
           memory: 1g
 
   cadvisor:
-    image: ghcr.io/google/cadvisor:v0.53.0@sha256:c3770bd6fc6c6a9cb2b47143e6b3cc3fdd9d20a8453dffbb7e09a145e7e0c4e4
+    image: ghcr.io/google/cadvisor:0.56.2@sha256:5534ae91cbf3428998d60428d107cfdd97272d80658534ac6e54d8ce3b0c4d72
     ports:
       - 127.0.0.1:8090:8080
     devices:

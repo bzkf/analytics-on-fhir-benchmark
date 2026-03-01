@@ -8,13 +8,14 @@ class QueryType(Enum):
     COUNT = "count"
     EXTRACT = "extract"
     COUNT_SKEWED = "count-skewed"
+    JOIN_COUNT_SKEWED = "join-count-skewed"
 
     def __str__(self):
         return str(self.value).lower()
 
 # QUERY_TYPES_TO_RUN =  [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT]
 
-QUERY_TYPES_TO_RUN = [QueryType.COUNT_SKEWED]
+QUERY_TYPES_TO_RUN = [QueryType.EXTRACT, QueryType.COUNT]
 
 class QueryEngine(Enum):
     PATHLING = "pathling"

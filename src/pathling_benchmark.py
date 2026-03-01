@@ -235,6 +235,47 @@ class PathlingBenchmark(Benchmark):
                     ],
                 },
             ],
+            QueryType.JOIN_COUNT_SKEWED: [
+                {
+                    "query_name": "skewed-hot-codes",
+                    "resource_type": "Observation",
+                    "columns": [
+                        exp(
+                            "Observation.subject.resolve().ofType(Patient).id",
+                            "patient_id",
+                        ),
+                    ],
+                    "filters": [
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='85354-9' or code='72514-3' or code='29463-7' or code='8867-4' or code='9279-1')))",
+                    ],
+                },
+                {
+                    "query_name": "skewed-rare-codes",
+                    "resource_type": "Observation",
+                    "columns": [
+                        exp(
+                            "Observation.subject.resolve().ofType(Patient).id",
+                            "patient_id",
+                        ),
+                    ],
+                    "filters": [
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='62337-1')))",
+                    ],
+                },
+                {
+                    "query_name": "skewed-mixed-codes",
+                    "resource_type": "Observation",
+                    "columns": [
+                        exp(
+                            "Observation.subject.resolve().ofType(Patient).id",
+                            "patient_id",
+                        ),
+                    ],
+                    "filters": [
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='85354-9' or code='72514-3' or code='29463-7' or code='8867-4' or code='9279-1' or code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='62337-1')))",
+                    ],
+                },
+            ],
         }
 
         start_timestamp = datetime.datetime.now(datetime.UTC)
@@ -293,6 +334,8 @@ class PathlingBenchmark(Benchmark):
                             df = df.groupBy("code").agg(count("*").alias("count"))
                         else:
                             df = df.select(count("*").alias("count"))
+                    elif query_type == QueryType.JOIN_COUNT_SKEWED:
+                        df = df.select(count("patient_id").alias("count"))
                     else:
                         df = df.orderBy("patient_id", ascending=True)
 

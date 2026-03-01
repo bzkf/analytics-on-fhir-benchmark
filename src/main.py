@@ -12,16 +12,16 @@ from pathling_benchmark import PathlingBenchmark
 from pyrate_benchmark import PyrateBenchmark
 from trino_benchmark import TrinoBenchmark
 
-NUM_RUNS_PER_ENGINE: int = 5
+NUM_RUNS_PER_ENGINE: int = 10
 
 # RUN_ONLY_HEMOGLOBIN_SIMPLE: bool = False
 # ENGINES_TO_TEST = ["pathling"]
 # BENCHMARK_RUN_PREFIX = "only-pathling"
 
-COLD_WARM_SEQUENCE = ["cold"]
+COLD_WARM_SEQUENCE = ["warm"]
 RUN_ONLY_HEMOGLOBIN_SIMPLE: bool = False
-ENGINES_TO_TEST = ["blaze"]
-BENCHMARK_RUN_PREFIX = "blaze-skewed"
+ENGINES_TO_TEST = ["pathling"]
+BENCHMARK_RUN_PREFIX = "pathling-warm"
 
 # RUN_ONLY_HEMOGLOBIN_SIMPLE: bool = True
 # ENGINES_TO_TEST = ["trino", "blaze", "hapi"]

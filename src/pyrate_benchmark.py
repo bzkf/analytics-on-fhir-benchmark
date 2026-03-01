@@ -257,11 +257,43 @@ class PyrateBenchmark(Benchmark):
                     "post_process": None,
                 },
             ],
+            QueryType.JOIN_COUNT_SKEWED: [
+                {
+                    "query_name": "join-hot-codes",
+                    "resource_type": "Patient",
+                    "request_params": {
+                        "code": "_has:Observation:patient:code=http://loinc.org|85354-9,http://loinc.org|72514-3,http://loinc.org|29463-7,http://loinc.org|8867-4,http://loinc.org|9279-1",
+                        "_summary": "count",
+                    },
+                    "fhir_paths": [],
+                    "post_process": None,
+                },
+                {
+                    "query_name": "join-rare-codes",
+                    "resource_type": "Patient",
+                    "request_params": {
+                        "code": "_has:Observation:patient:code=http://loinc.org|7917-8,http://loinc.org|18752-6,http://loinc.org|26881-3,http://loinc.org|21924-6,http://loinc.org|62337-1",
+                        "_summary": "count",
+                    },
+                    "fhir_paths": [],
+                    "post_process": None,
+                },
+                {
+                    "query_name": "join-mixed-codes",
+                    "resource_type": "Patient",
+                    "request_params": {
+                        "code": "_has:Observation:patient:code=http://loinc.org|7917-8,http://loinc.org|18752-6,http://loinc.org|26881-3,http://loinc.org|21924-6,http://loinc.org|62337-1,http://loinc.org|85354-9,http://loinc.org|72514-3,http://loinc.org|29463-7,http://loinc.org|8867-4,http://loinc.org|9279-1",
+                        "_summary": "count",
+                    },
+                    "fhir_paths": [],
+                    "post_process": None,
+                },
+            ],
         }
 
         start_timestamp = datetime.datetime.now(datetime.UTC)
 
-        # remove the default hemoglobin queries if only the seimple ones are supposed to run
+        # remove the default hemoglobin queries if only the simple ones are supposed to run
         if only_hemoglobin_simple:
             queries[QueryType.COUNT] = [
                 q for q in queries[QueryType.COUNT] if q["query_name"] != "hemoglobin"
@@ -299,6 +331,7 @@ class PyrateBenchmark(Benchmark):
                 if (
                     query_type == QueryType.COUNT
                     or query_type == QueryType.COUNT_SKEWED
+                    or query_type == QueryType.JOIN_COUNT_SKEWED
                 ):
                     # special handling for the count cases
                     count = self.search.get_bundle_total(
