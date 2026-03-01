@@ -20,13 +20,8 @@ NUM_RUNS_PER_ENGINE: int = 10
 
 COLD_WARM_SEQUENCE = ["warm"]
 RUN_ONLY_HEMOGLOBIN_SIMPLE: bool = False
-ENGINES_TO_TEST = ["pathling"]
-BENCHMARK_RUN_PREFIX = "pathling-warm"
-
-# RUN_ONLY_HEMOGLOBIN_SIMPLE: bool = True
-# ENGINES_TO_TEST = ["trino", "blaze", "hapi"]
-# BENCHMARK_RUN_PREFIX = "server-vs-server"
-
+ENGINES_TO_TEST = ["trino", "blaze", "hapi", "pathling"]
+BENCHMARK_RUN_PREFIX = "all-engines"
 
 def main() -> int:
     results = pd.DataFrame()

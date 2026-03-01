@@ -1,8 +1,8 @@
 version: "3"
 
 env:
-  SYNTHEA_POPULATION_SIZE: 100000
-  SKIP_RELATIVE_PERFORMANCE_COMPARISON: 1
+  SYNTHEA_POPULATION_SIZE: 1000
+  SKIP_RELATIVE_PERFORMANCE_COMPARISON: 0
 
 vars:
   # only here as a comment. not yet used to loop through all at once.
@@ -45,7 +45,7 @@ tasks:
         sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
     cmds:
       - mkdir -p src/results/import-resource-metrics/
-      - docker compose -f compose.pathling.yaml -f compose.trino.yaml -f compose.cadvisor.yaml -f compose.blaze.yaml up -d # -f compose.hapi.yaml
+      - docker compose -f compose.pathling.yaml -f compose.trino.yaml -f compose.cadvisor.yaml -f compose.blaze.yaml -f compose.hapi.yaml up -d
       - docker system df -v
       - time docker compose -f compose.warehousekeeper.yaml up warehousekeeper
       - docker compose -f compose.pathling.yaml logs import-resources
@@ -66,8 +66,8 @@ tasks:
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8083/fhir'
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8083/fhir'
       # hapi fhir jpa
-      # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8084/fhir'
-      # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8084/fhir'
+      - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8084/fhir'
+      - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8084/fhir'
       # a single transaction failed and we had to resend it manually
       # - curl -X POST  --header 'Content-Type:application/fhir+json' --data @"synthea/output-50000/transactions/fhir/Lorilee250_Hickle134_26c45c57-1a86-ccff-7907-400f23bea4bb.json" http://localhost:8084/fhir
       # actual data upload
@@ -76,10 +76,10 @@ tasks:
       - time ./blazectl upload --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8083/fhir || true
       - docker system df -v
       # hapi
-      # - echo "Uploading data to HAPI"
-      # - time ./blazectl upload --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8084/fhir || true
-      # - docker system df -v
-      # - time docker compose -f compose.hapi.yaml exec hapi-fhir-postgres psql -U admin -d hapi -f /tmp/pg-vacuum.sql
+      - echo "Uploading data to HAPI"
+      - time ./blazectl upload --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8084/fhir || true
+      - docker system df -v
+      - time docker compose -f compose.hapi.yaml exec hapi-fhir-postgres psql -U admin -d hapi -f /tmp/pg-vacuum.sql
       # collect metrics
       - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-fhir-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
       - sleep 5m

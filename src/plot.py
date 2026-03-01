@@ -6,13 +6,9 @@ from loguru import logger
 
 from benchmark import QueryType
 
-BENCHMARK_CATEGORY = "skewed"
+BENCHMARK_CATEGORY = "all-engines"
 
-FACETS = [
-    "gender-age",
-    "diabetes",
-    "hemoglobin"
-]
+FACETS = ["gender-age", "diabetes", "hemoglobin"]
 
 
 def compute_relative_duration(group):
@@ -69,10 +65,12 @@ results_dir.mkdir(parents=True, exist_ok=True)
 
 # added to make it work in the GitHub workflow that only uses a much smaller record size
 if not os.getenv("SKIP_RELATIVE_PERFORMANCE_COMPARISON", False):
+
+    relative_df = df[df["query"] != "hemoglobin-simple"]
     # this results in some NA values in the means since `observations-by-code` is
     # only used in the `aggregate` scenario and in turn all other scenarios
     # are not ran against the `observations-by-code` query.
-    df[df["record_count_categorical"] == 100000].groupby(
+    relative_df[relative_df["record_count_categorical"] == 100000].groupby(
         ["engine", "query_type", "query", "record_count_categorical"]
     )["total_duration_seconds"].mean().dropna().drop(
         columns=("record_count_categorical")
@@ -87,9 +85,12 @@ if not os.getenv("SKIP_RELATIVE_PERFORMANCE_COMPARISON", False):
     logger.info(means_largest_record_count)
 
     # Apply the function to each (query, query_type) group
-    relative_data = means_largest_record_count.groupby(["query", "query_type"]).apply(
-        compute_relative_duration
+    relative_data = (
+        means_largest_record_count.groupby(["query", "query_type"])
+        .apply(compute_relative_duration)
+        .reset_index(drop=True)
     )
+    logger.info(relative_data)
 
     # Sort and display
     relative_data = relative_data.sort_values(by=["query", "query_type", "engine"])
@@ -111,7 +112,7 @@ sns.set_theme(style="whitegrid", font="sans-serif", context="paper")
 
 df_original = df
 
-for query_type in [QueryType.COUNT_SKEWED]: # QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE,
+for query_type in [QueryType.EXTRACT, QueryType.COUNT, QueryType.AGGREGATE]:
     query_type_str = str(query_type)
 
     (output_dir / query_type_str).mkdir(parents=True, exist_ok=True)
@@ -198,27 +199,6 @@ for query_type in [QueryType.COUNT_SKEWED]: # QueryType.EXTRACT, QueryType.COUNT
                 rotation="horizontal",
                 size="small",
             )
-
-        for bar, error_line in zip(ax.patches, ax.lines):
-            # Extract bar and error bar positions
-            x = bar.get_x() + bar.get_width() / 2
-            y = bar.get_height()
-
-            # Extract CI from error bars
-            error_y = error_line.get_ydata()
-            ci_lower, ci_upper = error_y[0], error_y[-1]
-
-            # Format the CI label
-            ci_label = f"({ci_lower:.1f}, {ci_upper:.1f})"
-            # ax.text(
-            #     x,
-            #     y * 1.05,
-            #     ci_label,
-            #     ha="center",
-            #     va="bottom",
-            #     color="black",
-            #     size="small",
-            # )
 
         for bar, (_, row) in zip(ax.patches, d.iterrows()):
             x = bar.get_x() + bar.get_width() / 2  # center of the bar

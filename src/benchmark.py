@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import datetime
 from enum import Enum
 
+
 class QueryType(Enum):
     AGGREGATE = "aggregate"
     COUNT = "count"
@@ -13,9 +14,9 @@ class QueryType(Enum):
     def __str__(self):
         return str(self.value).lower()
 
-# QUERY_TYPES_TO_RUN =  [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT]
 
-QUERY_TYPES_TO_RUN = [QueryType.EXTRACT, QueryType.COUNT]
+QUERY_TYPES_TO_RUN = [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT]
+
 
 class QueryEngine(Enum):
     PATHLING = "pathling"
@@ -46,5 +47,5 @@ class BenchmarkRunResult:
 
 class Benchmark(ABC):
     @abstractmethod
-    def run_all_queries(self, run_id : int) -> list[BenchmarkRunResult]:
+    def run_all_queries(self, run_id: int) -> list[BenchmarkRunResult]:
         pass
