@@ -101,7 +101,6 @@ tasks:
   draw-plots:
     dir: src/
     cmds:
-      - python plot_metrics.py
       - python plot.py
 
   run:
