@@ -1,7 +1,8 @@
 version: "3"
 
 env:
-  SYNTHEA_POPULATION_SIZE: 100000
+  SYNTHEA_POPULATION_SIZE: 1000
+  SKIP_RELATIVE_PERFORMANCE_COMPARISON: 0
 
 vars:
   # only here as a comment. not yet used to loop through all at once.
@@ -15,50 +16,87 @@ vars:
 tasks:
   install-dependencies:
     cmds:
-      - curl -LO https://github.com/synthetichealth/synthea/releases/download/master-branch-latest/synthea-with-dependencies.jar
-      - curl -LO https://repo1.maven.org/maven2/io/trino/trino-cli/476/trino-cli-476-executable.jar
-      - curl -LO https://github.com/samply/blazectl/releases/download/v1.1.0/blazectl-1.1.0-linux-amd64.tar.gz
-      - tar xzf blazectl-1.1.0-linux-amd64.tar.gz
-      - rm blazectl-1.1.0-linux-amd64.tar.gz
+      - curl -LO https://github.com/synthetichealth/synthea/releases/download/v3.4.0/synthea-with-dependencies.jar
+      - curl -LO https://repo1.maven.org/maven2/io/trino/trino-cli/478/trino-cli-478-executable.jar
+      - curl -LO https://github.com/samply/blazectl/releases/download/v1.2.0/blazectl-1.2.0-linux-amd64.tar.gz
+      - tar xzf blazectl-1.2.0-linux-amd64.tar.gz
+      - rm blazectl-1.2.0-linux-amd64.tar.gz
       - ./blazectl --version
       - pip install -r requirements.txt
     generates:
       - synthea-with-dependencies.jar
       - blazectl
-      - trino-cli-476-executable.jar
+      - trino-cli-478-executable.jar
 
-  # TODO: could use a task loop to generate synthea data for all sizes at once.
   generate-fhir-data:
     cmds:
-      - java -jar synthea-with-dependencies.jar -s 20240711 -cs 20240711 -r 20240711 -p "${SYNTHEA_POPULATION_SIZE}" -c config/synthea.properties --exporter.baseDirectory="./synthea/output-${SYNTHEA_POPULATION_SIZE}/bulk" --exporter.fhir.bulk_data="true"
-      - java -jar synthea-with-dependencies.jar -s 20240711 -cs 20240711 -r 20240711 -p "${SYNTHEA_POPULATION_SIZE}" -c config/synthea.properties --exporter.baseDirectory="./synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions" --exporter.fhir.bulk_data="false"
+      - time java -jar synthea-with-dependencies.jar -s 20240711 -cs 20240711 -r 20240711 -e 20240711 -p "${SYNTHEA_POPULATION_SIZE}" -c config/synthea.properties --exporter.baseDirectory="./synthea/output-${SYNTHEA_POPULATION_SIZE}/bulk" --exporter.fhir.bulk_data="true"
+      - |
+        for f in ./synthea/output-${SYNTHEA_POPULATION_SIZE}/bulk/fhir/*.*.ndjson; do
+            base=$(echo "$f" | sed -E 's/\.[0-9]+//')
+            mv "$f" "$base"
+        done
+      - time java -jar synthea-with-dependencies.jar -s 20240711 -cs 20240711 -r 20240711 -e 20240711 -p "${SYNTHEA_POPULATION_SIZE}" -c config/synthea.properties --exporter.baseDirectory="./synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions" --exporter.fhir.bulk_data="false"
+      - du --si -h synthea/
 
   start-servers:
+    vars:
+      START_TIME:
+        sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
     cmds:
-      - docker compose -f compose.blaze.yaml -f compose.pathling.yaml -f compose.trino.yaml up -d
+      - mkdir -p src/results/import-resource-metrics/
+      - docker compose -f compose.pathling.yaml -f compose.trino.yaml -f compose.cadvisor.yaml -f compose.blaze.yaml -f compose.hapi.yaml up -d
+      - docker system df -v
+      - time docker compose -f compose.warehousekeeper.yaml up warehousekeeper
+      - docker compose -f compose.pathling.yaml logs import-resources
+      - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-pathling-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
       # after the import is done, we no longer need the pathling server itself
+      # only stop it after the metrics were collected
       - docker compose -f compose.pathling.yaml stop pathling
+      - sleep 5m
+      - docker system df -v
 
   upload-fhir-data:
+    vars:
+      START_TIME:
+        sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
     cmds:
-      # blaze
       # hospitalInformation & practitionerInformation are required for referential integrity.
+      # blaze
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8083/fhir'
       - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8083/fhir'
-      - ./blazectl upload --no-progress --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8083/fhir
       # hapi fhir jpa
-      # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find output/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8084/fhir'
-      # - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find output/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8084/fhir'
-      # - ./blazectl upload output/transactions/fhir/ --server http://localhost:8084/fhir
+      - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'hospitalInformation*.json')" --url 'http://localhost:8084/fhir'
+      - curl -X POST --header 'Content-Type:application/fhir+json' --data @"$(find synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ -name 'practitionerInformation*.json')" --url 'http://localhost:8084/fhir'
+      # a single transaction failed and we had to resend it manually
+      # - curl -X POST  --header 'Content-Type:application/fhir+json' --data @"synthea/output-50000/transactions/fhir/Lorilee250_Hickle134_26c45c57-1a86-ccff-7907-400f23bea4bb.json" http://localhost:8084/fhir
+      # actual data upload
+      # blaze
+      - echo "Uploading data to Blaze"
+      - time ./blazectl upload --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8083/fhir || true
+      - docker system df -v
+      # hapi
+      - echo "Uploading data to HAPI"
+      - time ./blazectl upload --concurrency 32 synthea/output-${SYNTHEA_POPULATION_SIZE}/transactions/fhir/ --server http://localhost:8084/fhir || true
+      - docker system df -v
+      - time docker compose -f compose.hapi.yaml exec hapi-fhir-postgres psql -U admin -d hapi -f /tmp/pg-vacuum.sql
+      # collect metrics
+      - python src/collect_metrics.py --start '{{ .START_TIME }}' --output src/results/import-resource-metrics/${SYNTHEA_POPULATION_SIZE}-fhir-import-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
+      - sleep 5m
+      - docker system df -v
 
   remove-local-synthea-files:
     cmds:
       - rm -r synthea/
 
   run-benchmarks:
+    vars:
+      START_TIME:
+        sh: date -u +"%Y-%m-%dT%H:%M:%SZ"
     dir: src/
     cmds:
-      - python main.py
+      - python main.py 2>&1 | tee run-benchmark.log
+      - python collect_metrics.py --start '{{ .START_TIME }}' --output results/${SYNTHEA_POPULATION_SIZE}-benchmark-resource-metrics.csv --population-size ${SYNTHEA_POPULATION_SIZE}
 
   draw-plots:
     dir: src/
@@ -76,6 +114,14 @@ tasks:
       - task: draw-plots
       - task: clean
 
+  generate-and-run:
+    cmds:
+      - task: generate-fhir-data
+      - task: start-servers
+      - task: upload-fhir-data
+      - task: remove-local-synthea-files
+      - task: run-benchmarks
+
   clean:
     cmds:
-      - docker compose -f compose.blaze.yaml -f compose.pathling.yaml -f compose.trino.yaml down -v --remove-orphans
+      - docker compose -f compose.blaze.yaml -f compose.pathling.yaml -f compose.trino.yaml -f compose.hapi.yaml -f compose.cadvisor.yaml down -v --remove-orphans

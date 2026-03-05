@@ -184,3 +184,5 @@ results/
 spark-tmp/
 
 synthea/
+
+get-docker.sh

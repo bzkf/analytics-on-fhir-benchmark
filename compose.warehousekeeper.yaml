@@ -1,0 +1,24 @@
+services:
+  warehousekeeper:
+    image: ghcr.io/miracum/util-images/warehousekeeper:v0.1.13@sha256:7f2a1a86f9ee27d98682aaec4a5cfd3615c4278cef8906ffb3e81df57eb21cd9
+    ipc: none
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - ALL
+    privileged: false
+    restart: "no"
+    environment:
+      AWS_ALLOW_HTTP: "1"
+      AWS_REGION: "eu-central-1"
+      AWS_ENDPOINT_URL: "http://minio:9000"
+      AWS_ACCESS_KEY_ID: "admin"
+      AWS_SECRET_ACCESS_KEY: "miniopass"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        python3 /opt/warehousekeeper/warehousekeeper.py register --bucket-name=fhir --database-name-prefix=default/ --hive-metastore=thrift://hive-metastore:9083
+        python3 /opt/warehousekeeper/warehousekeeper.py optimize --bucket-name=fhir --database-name-prefix=default/
+        python3 /opt/warehousekeeper/warehousekeeper.py vacuum   --bucket-name=fhir --database-name-prefix=default/ --retention-hours=0 --dry-run=false --enforce-retention-duration=false
+    volumes:
+      - $PWD/config/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro

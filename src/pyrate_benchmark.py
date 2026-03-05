@@ -5,15 +5,14 @@ from fhir_pyrate import Ahoy, Pirate
 from pathlib import Path
 from loguru import logger
 from pandas import DataFrame
-import pandas as pd
 
-from benchmark import Benchmark, BenchmarkRunResult, QueryType
+from benchmark import Benchmark, BenchmarkRunResult, QueryType, QUERY_TYPES_TO_RUN
 
-PAGE_SIZE: int = 10_000
+PAGE_SIZE: int = 1_000
 
 
 class PyrateBenchmark(Benchmark):
-    def __init__(self):
+    def __init__(self, fhir_server_base_url: str, fhir_server_name: str):
         os.environ["FHIR_USER"] = "any"
         os.environ["FHIR_PASSWORD"] = "any"
 
@@ -21,13 +20,22 @@ class PyrateBenchmark(Benchmark):
 
         self.search = Pirate(
             auth=auth,
-            base_url="http://localhost:8083/fhir/",
+            base_url=fhir_server_base_url,
             print_request_url=False,  # TODO: useful for debugging
         )
+
+        self.fhir_server_name = fhir_server_name
+
         logger.info("Completed initialization.")
 
-    def run_all_queries(self, run_id: int) -> list[BenchmarkRunResult]:
-        output_folder_base = Path.cwd() / "results" / "pyrate"
+    def run_all_queries(
+        self,
+        run_id: int,
+        is_warmup: bool = False,
+        cold_or_warm: str = "cold",
+        only_hemoglobin_simple: bool = False,
+    ) -> list[BenchmarkRunResult]:
+        output_folder_base = Path.cwd() / "results" / f"pyrate-{self.fhir_server_name}"
 
         results = []
         queries = {
@@ -82,7 +90,40 @@ class PyrateBenchmark(Benchmark):
                     "query_name": "hemoglobin",
                     "resource_type": "Observation",
                     "request_params": {
-                        "code-value-quantity": "http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
+                        "code-value-quantity": "http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%,http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
+                        "_include": "Observation:patient",
+                        "_count": PAGE_SIZE,
+                        "_sort": "_id",
+                    },
+                    "fhir_paths": [
+                        ("patient_id", "Patient.id"),
+                        ("patient_birthdate", "Patient.birthDate"),
+                        ("observation_id", "Observation.id"),
+                        (
+                            "loinc_code",
+                            "Observation.code.coding.where(system = 'http://loinc.org').code",
+                        ),
+                        (
+                            "value_quantity_ucum_code",
+                            "Observation.valueQuantity.where(system = 'http://unitsofmeasure.org').code",
+                        ),
+                        (
+                            "value_quantity_value",
+                            "Observation.valueQuantity.where(system = 'http://unitsofmeasure.org').value",
+                        ),
+                        ("effective_datetime", "Observation.effectiveDateTime"),
+                        (
+                            "observation_patient_reference",
+                            "Observation.subject.reference",
+                        ),
+                    ],
+                    "post_process": None,
+                },
+                {
+                    "query_name": "hemoglobin-simple",
+                    "resource_type": "Observation",
+                    "request_params": {
+                        "code-value-quantity": "http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%",
                         "_include": "Observation:patient",
                         "_count": PAGE_SIZE,
                         "_sort": "_id",
@@ -147,7 +188,6 @@ class PyrateBenchmark(Benchmark):
                         "birthdate": "ge1970-01-01",
                         "gender": "female",
                         "_summary": "count",
-                        "_sort": "_id",
                     },
                     "fhir_paths": [],
                     "post_process": None,
@@ -160,7 +200,6 @@ class PyrateBenchmark(Benchmark):
                         "code": "http://snomed.info/sct|73211009,http://snomed.info/sct|427089005,http://snomed.info/sct|44054006",
                         "subject:Patient.birthdate": "ge1970-01-01",
                         "_summary": "count",
-                        "_sort": "_id",
                     },
                     "fhir_paths": [],
                     "post_process": None,
@@ -169,9 +208,82 @@ class PyrateBenchmark(Benchmark):
                     "query_name": "hemoglobin",
                     "resource_type": "Patient",
                     "request_params": {
-                        "_has:Observation:patient:code-value-quantity": "http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
+                        "_has:Observation:patient:code-value-quantity": "http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%,http://loinc.org|718-7$gt25|http://unitsofmeasure.org|g/dL,http://loinc.org|17856-6$gt5|http://unitsofmeasure.org|%,http://loinc.org|4549-2$gt5|http://unitsofmeasure.org|%",
                         "_summary": "count",
-                        "_sort": "_id",
+                    },
+                    "fhir_paths": [],
+                    "post_process": None,
+                },
+                {
+                    "query_name": "hemoglobin-simple",
+                    "resource_type": "Patient",
+                    "request_params": {
+                        "_has:Observation:patient:code-value-quantity": "http://loinc.org|4548-4$gt5|http://unitsofmeasure.org|%",
+                        "_summary": "count",
+                    },
+                    "fhir_paths": [],
+                    "post_process": None,
+                },
+            ],
+            QueryType.COUNT_SKEWED: [
+                {
+                    "query_name": "skewed-hot-codes",
+                    "resource_type": "Observation",
+                    "request_params": {
+                        "code": "http://loinc.org|85354-9,http://loinc.org|72514-3,http://loinc.org|29463-7,http://loinc.org|8867-4,http://loinc.org|9279-1",
+                        "_summary": "count",
+                    },
+                    "fhir_paths": [],
+                    "post_process": None,
+                },
+                {
+                    "query_name": "skewed-rare-codes",
+                    "resource_type": "Observation",
+                    "request_params": {
+                        "code": "http://loinc.org|7917-8,http://loinc.org|18752-6,http://loinc.org|26881-3,http://loinc.org|21924-6,http://loinc.org|62337-1",
+                        "_summary": "count",
+                    },
+                    "fhir_paths": [],
+                    "post_process": None,
+                },
+                {
+                    "query_name": "skewed-mixed-codes",
+                    "resource_type": "Observation",
+                    "request_params": {
+                        "code": "http://loinc.org|7917-8,http://loinc.org|18752-6,http://loinc.org|26881-3,http://loinc.org|21924-6,http://loinc.org|62337-1,http://loinc.org|85354-9,http://loinc.org|72514-3,http://loinc.org|29463-7,http://loinc.org|8867-4,http://loinc.org|9279-1",
+                        "_summary": "count",
+                    },
+                    "fhir_paths": [],
+                    "post_process": None,
+                },
+            ],
+            QueryType.JOIN_COUNT_SKEWED: [
+                {
+                    "query_name": "join-hot-codes",
+                    "resource_type": "Patient",
+                    "request_params": {
+                        "code": "_has:Observation:patient:code=http://loinc.org|85354-9,http://loinc.org|72514-3,http://loinc.org|29463-7,http://loinc.org|8867-4,http://loinc.org|9279-1",
+                        "_summary": "count",
+                    },
+                    "fhir_paths": [],
+                    "post_process": None,
+                },
+                {
+                    "query_name": "join-rare-codes",
+                    "resource_type": "Patient",
+                    "request_params": {
+                        "code": "_has:Observation:patient:code=http://loinc.org|7917-8,http://loinc.org|18752-6,http://loinc.org|26881-3,http://loinc.org|21924-6,http://loinc.org|62337-1",
+                        "_summary": "count",
+                    },
+                    "fhir_paths": [],
+                    "post_process": None,
+                },
+                {
+                    "query_name": "join-mixed-codes",
+                    "resource_type": "Patient",
+                    "request_params": {
+                        "code": "_has:Observation:patient:code=http://loinc.org|7917-8,http://loinc.org|18752-6,http://loinc.org|26881-3,http://loinc.org|21924-6,http://loinc.org|62337-1,http://loinc.org|85354-9,http://loinc.org|72514-3,http://loinc.org|29463-7,http://loinc.org|8867-4,http://loinc.org|9279-1",
+                        "_summary": "count",
                     },
                     "fhir_paths": [],
                     "post_process": None,
@@ -181,7 +293,16 @@ class PyrateBenchmark(Benchmark):
 
         start_timestamp = datetime.datetime.now(datetime.UTC)
 
-        for query_type in QueryType:
+        # remove the default hemoglobin queries if only the simple ones are supposed to run
+        if only_hemoglobin_simple:
+            queries[QueryType.COUNT] = [
+                q for q in queries[QueryType.COUNT] if q["query_name"] != "hemoglobin"
+            ]
+            queries[QueryType.EXTRACT] = [
+                q for q in queries[QueryType.EXTRACT] if q["query_name"] != "hemoglobin"
+            ]
+
+        for query_type in QUERY_TYPES_TO_RUN:
             output_folder = output_folder_base / str(query_type)
             output_folder.mkdir(parents=True, exist_ok=True)
 
@@ -198,10 +319,21 @@ class PyrateBenchmark(Benchmark):
                 )
                 timings_start = time.perf_counter()
 
-                df: DataFrame = None
+                df: DataFrame | dict[str, DataFrame]
 
-                if query_type == QueryType.COUNT:
-                    # special handling for the count case
+                if self.fhir_server_name == "hapi" and query_name == "hemoglobin":
+                    logger.warning(
+                        "Skipping query {query_name} against HAPI FHIR due to known performance issues.",
+                        query_name=query_name,
+                    )
+                    continue
+
+                if (
+                    query_type == QueryType.COUNT
+                    or query_type == QueryType.COUNT_SKEWED
+                    or query_type == QueryType.JOIN_COUNT_SKEWED
+                ):
+                    # special handling for the count cases
                     count = self.search.get_bundle_total(
                         resource_type=query["resource_type"],
                         request_params=query["request_params"],
@@ -239,13 +371,15 @@ class PyrateBenchmark(Benchmark):
                 result = BenchmarkRunResult(
                     run_id=run_id,
                     start_timestamp=start_timestamp,
-                    engine="pyrate",
+                    engine=f"pyrate-{self.fhir_server_name}",
                     query=query_name,
                     query_type=query_type,
                     total_duration_seconds=duration_total,
                     write_to_file_duration_seconds=write_to_file_duration,
                     fetch_duration_seconds=fetch_duration,
                     post_process_duration_seconds=post_process_duration,
+                    is_warmup=is_warmup,
+                    cold_or_warm=cold_or_warm,
                 )
                 results.append(result)
 

@@ -3,12 +3,11 @@ import os
 import time
 from pathling import PathlingContext, Expression as exp
 from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql.functions import count_distinct
+from pyspark.sql.functions import count_distinct, count
 from loguru import logger
 from pathlib import Path
 
-from benchmark import Benchmark, BenchmarkRunResult, QueryType
-
+from benchmark import Benchmark, BenchmarkRunResult, QueryType, QUERY_TYPES_TO_RUN
 
 class PathlingBenchmark(Benchmark):
     def __init__(self):
@@ -45,6 +44,8 @@ class PathlingBenchmark(Benchmark):
                 "spark.hadoop.fs.s3a.path.style.access",
                 "true",
             )
+            .config("spark.sql.shuffle.partitions", "200")
+            .config("spark.sql.adaptive.enabled", "true")
             .config("spark.local.dir", Path.cwd() / "spark-tmp")
             .getOrCreate()
         )
@@ -53,7 +54,9 @@ class PathlingBenchmark(Benchmark):
             spark, enable_delta=True, enable_terminology=False
         )
 
-    def run_all_queries(self, run_id: str) -> list[BenchmarkRunResult]:
+    def run_all_queries(
+        self, run_id: int, is_warmup: bool = False, cold_or_warm: str = "cold"
+    ) -> list[BenchmarkRunResult]:
         output_folder_base = Path.cwd() / "results" / "pathling"
 
         data = self.pc.read.delta("s3a://fhir/default")
@@ -69,6 +72,12 @@ class PathlingBenchmark(Benchmark):
                         exp("Patient.birthDate", "patient_birthdate"),
                         exp("Patient.gender", "patient_gender"),
                     ],
+                    "count_columns": [
+                        exp(
+                            "Patient.id",
+                            "column_to_count",
+                        ),
+                    ],
                     "filters": [
                         "Patient.gender = 'female' and Patient.birthDate >= @1970-01-01"
                     ],
@@ -79,7 +88,7 @@ class PathlingBenchmark(Benchmark):
                     "columns": [
                         exp("Condition.id", "condition_id"),
                         exp(
-                            "Condition.code.coding.where(system='http://snomed.info/sct' and (code='73211009' or code='427089005' or code='44054006')).code",
+                            "Condition.code.coding.where(system='http://snomed.info/sct' and (code='73211009' or code='427089005' or code='44054006')).first().code",
                             "condition_snomed_code",
                         ),
                         exp("Condition.onsetDateTime", "condition_onset"),
@@ -102,6 +111,12 @@ class PathlingBenchmark(Benchmark):
                             "patient_birthdate",
                         ),
                     ],
+                    "count_columns": [
+                        exp(
+                            "Condition.id",
+                            "column_to_count",
+                        ),
+                    ],
                     "filters": [
                         "Condition.code.coding.where(system='http://snomed.info/sct' and (code='73211009' or code='427089005' or code='44054006')).exists()",
                         "Condition.encounter.resolve().period.start >= @2020-01-01",
@@ -122,7 +137,7 @@ class PathlingBenchmark(Benchmark):
                         ),
                         exp("Observation.id", "observation_id"),
                         exp(
-                            "Observation.code.coding.where(system = 'http://loinc.org').code",
+                            "Observation.code.coding.where(system = 'http://loinc.org').first().code",
                             "loinc_code",
                         ),
                         exp(
@@ -137,6 +152,12 @@ class PathlingBenchmark(Benchmark):
                         exp(
                             "Observation.subject.reference",
                             "observation_patient_reference",
+                        ),
+                    ],
+                    "count_columns": [
+                        exp(
+                            "Observation.subject.reference",
+                            "column_to_count",
                         ),
                     ],
                     "filters": [
@@ -168,11 +189,98 @@ class PathlingBenchmark(Benchmark):
                     "query_name": "hemoglobin",
                 },
             ],
+            QueryType.COUNT_SKEWED: [
+                {
+                    "query_name": "skewed-hot-codes",
+                    "resource_type": "Observation",
+                    "columns": [
+                        exp("Observation.id", "observation_id"),
+                    ],
+                    "filters": [
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='85354-9' or code='72514-3' or code='29463-7' or code='8867-4' or code='9279-1')))",
+                    ],
+                },
+                {
+                    "query_name": "skewed-rare-codes",
+                    "resource_type": "Observation",
+                    "columns": [
+                        exp("Observation.id", "observation_id"),
+                    ],
+                    "filters": [
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='62337-1')))",
+                    ],
+                },
+                {
+                    "query_name": "skewed-mixed-codes",
+                    "resource_type": "Observation",
+                    "columns": [
+                        exp("Observation.id", "observation_id"),
+                    ],
+                    "filters": [
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='85354-9' or code='72514-3' or code='29463-7' or code='8867-4' or code='9279-1' or code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='62337-1')))",
+                    ],
+                },
+                {
+                    "query_name": "skewed-mixed-group-by",
+                    "resource_type": "Observation",
+                    "columns": [
+                        exp("Observation.id", "observation_id"),
+                        exp(
+                            "Observation.code.coding.where(system = 'http://loinc.org').first().code",
+                            "code",
+                        ),
+                    ],
+                    "filters": [
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='85354-9' or code='72514-3' or code='29463-7' or code='8867-4' or code='9279-1' or code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='62337-1')))",
+                    ],
+                },
+            ],
+            QueryType.JOIN_COUNT_SKEWED: [
+                {
+                    "query_name": "skewed-hot-codes",
+                    "resource_type": "Observation",
+                    "columns": [
+                        exp(
+                            "Observation.subject.resolve().ofType(Patient).id",
+                            "patient_id",
+                        ),
+                    ],
+                    "filters": [
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='85354-9' or code='72514-3' or code='29463-7' or code='8867-4' or code='9279-1')))",
+                    ],
+                },
+                {
+                    "query_name": "skewed-rare-codes",
+                    "resource_type": "Observation",
+                    "columns": [
+                        exp(
+                            "Observation.subject.resolve().ofType(Patient).id",
+                            "patient_id",
+                        ),
+                    ],
+                    "filters": [
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='62337-1')))",
+                    ],
+                },
+                {
+                    "query_name": "skewed-mixed-codes",
+                    "resource_type": "Observation",
+                    "columns": [
+                        exp(
+                            "Observation.subject.resolve().ofType(Patient).id",
+                            "patient_id",
+                        ),
+                    ],
+                    "filters": [
+                        "Observation.code.coding.exists(system='http://loinc.org' and (code='85354-9' or code='72514-3' or code='29463-7' or code='8867-4' or code='9279-1' or code='7917-8' or code='18752-6' or code='26881-3' or code='21924-6' or code='62337-1')))",
+                    ],
+                },
+            ],
         }
 
         start_timestamp = datetime.datetime.now(datetime.UTC)
 
-        for query_type in QueryType:
+        for query_type in QUERY_TYPES_TO_RUN:
             output_folder = output_folder_base / str(query_type)
             output_folder.mkdir(parents=True, exist_ok=True)
 
@@ -215,16 +323,19 @@ class PathlingBenchmark(Benchmark):
 
                     df = data.extract(
                         resource_type=query["resource_type"],
-                        columns=query["columns"],
+                        columns=query["count_columns"] if query_type == QueryType.COUNT else query["columns"],
                         filters=query["filters"],
                     )
 
                     if query_type == QueryType.COUNT:
-                        # in case of the diabetes query, count the condition id, not the patient id
-                        if query_name == "diabetes":
-                            df = df.agg(count_distinct("condition_id"))
+                            df = df.agg(count_distinct("column_to_count"))
+                    elif query_type == QueryType.COUNT_SKEWED:
+                        if query_name == "skewed-mixed-group-by":
+                            df = df.groupBy("code").agg(count("*").alias("count"))
                         else:
-                            df = df.agg(count_distinct("patient_id"))
+                            df = df.select(count("*").alias("count"))
+                    elif query_type == QueryType.JOIN_COUNT_SKEWED:
+                        df = df.select(count("patient_id").alias("count"))
                     else:
                         df = df.orderBy("patient_id", ascending=True)
 
@@ -244,6 +355,8 @@ class PathlingBenchmark(Benchmark):
                     write_to_file_duration_seconds=0,
                     fetch_duration_seconds=0,
                     post_process_duration_seconds=0,
+                    is_warmup=is_warmup,
+                    cold_or_warm=cold_or_warm,
                 )
                 results.append(result)
 

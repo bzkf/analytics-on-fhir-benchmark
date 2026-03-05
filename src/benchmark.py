@@ -8,9 +8,14 @@ class QueryType(Enum):
     AGGREGATE = "aggregate"
     COUNT = "count"
     EXTRACT = "extract"
+    COUNT_SKEWED = "count-skewed"
+    JOIN_COUNT_SKEWED = "join-count-skewed"
 
     def __str__(self):
         return str(self.value).lower()
+
+
+QUERY_TYPES_TO_RUN = [QueryType.EXTRACT, QueryType.AGGREGATE, QueryType.COUNT]
 
 
 class QueryEngine(Enum):
@@ -24,7 +29,7 @@ class QueryEngine(Enum):
 
 @dataclass
 class BenchmarkRunResult:
-    run_id: str
+    run_id: int
     start_timestamp: datetime.datetime
     engine: str
     query: str
@@ -36,9 +41,11 @@ class BenchmarkRunResult:
     trino_cpu_time_seconds: float = 0
     trino_wall_time_seconds: float = 0
     trino_elapsed_time_seconds: float = 0
+    is_warmup: bool = False
+    cold_or_warm: str = "cold"
 
 
 class Benchmark(ABC):
     @abstractmethod
-    def run_all_queries(self):
+    def run_all_queries(self, run_id: int) -> list[BenchmarkRunResult]:
         pass

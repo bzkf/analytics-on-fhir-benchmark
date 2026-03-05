@@ -1,0 +1,40 @@
+services:
+  hapi-fhir:
+    image: docker.io/hapiproject/hapi:v8.6.0-1@sha256:7611e4d6601f35dd8c223ed2ed47a2807be06976f71b2e5990e6541bbc90c16f
+    restart: on-failure
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://hapi-fhir-postgres:5432/hapi"
+      SPRING_DATASOURCE_USERNAME: "admin"
+      SPRING_DATASOURCE_PASSWORD: "admin"
+      SPRING_DATASOURCE_DRIVERCLASSNAME: "org.postgresql.Driver"
+      spring.jpa.properties.hibernate.dialect: ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect
+      HAPI_FHIR_VALIDATION_REQUESTS_ENABLED: "false"
+      HAPI_FHIR_ENFORCE_REFERENTIAL_INTEGRITY_ON_DELETE: "false"
+      HAPI_FHIR_ENFORCE_REFERENTIAL_INTEGRITY_ON_WRITE: "false"
+      HAPI_FHIR_SUBSCRIPTION_RESTHOOK_ENABLED: "false"
+      JAVA_TOOL_OPTIONS: "-Xmx48g"
+      HAPI_FHIR_RETAIN_CACHED_SEARCHES_MINS: 120
+      HAPI_FHIR_REUSE_CACHED_SEARCH_RESULTS_MILLIS: 60000
+    ports:
+      - "127.0.0.1:8084:8080"
+
+  hapi-fhir-postgres:
+    image: docker.io/library/postgres:18.1@sha256:28bda6d50590658221007b10573830c941b483e9d1a5bc2713a3f60477df8389
+    restart: always
+    shm_size: 8g # So the answer would be: shm_max value for docker should be higher or equal than shared_buffers
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    environment:
+      POSTGRES_DB: "hapi"
+      POSTGRES_USER: "admin"
+      POSTGRES_PASSWORD: "admin"
+    deploy:
+      resources:
+        limits:
+          memory: 16g
+    volumes:
+      - hapi-fhir-postgres:/var/lib/postgresql/18/docker:rw
+      - $PWD/config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - $PWD/pg-vacuum.sql:/tmp/pg-vacuum.sql:ro
+
+volumes:
+  hapi-fhir-postgres: {}

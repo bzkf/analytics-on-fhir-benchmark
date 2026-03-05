@@ -5,7 +5,7 @@ from pathlib import Path
 from loguru import logger
 import time
 
-from benchmark import Benchmark, BenchmarkRunResult, QueryType
+from benchmark import Benchmark, BenchmarkRunResult, QueryType, QUERY_TYPES_TO_RUN
 
 
 class TrinoBenchmark(Benchmark):
@@ -19,14 +19,16 @@ class TrinoBenchmark(Benchmark):
         )
         logger.info("Completed initialization.")
 
-    def run_all_queries(self, run_id: int) -> list[BenchmarkRunResult]:
+    def run_all_queries(
+        self, run_id: int, is_warmup: bool = False, cold_or_warm: str = "cold"
+    ) -> list[BenchmarkRunResult]:
         logger.info("Begin trino benchmarking")
         queries_base_path = Path.cwd() / "queries"
 
         results = []
         start_timestamp = datetime.datetime.now(datetime.UTC)
 
-        for query_type in QueryType:
+        for query_type in QUERY_TYPES_TO_RUN:
             queries_dir_path = queries_base_path / str(query_type)
             logger.info(
                 "Looking for sql files in {queries_dir_path}",
@@ -101,6 +103,8 @@ class TrinoBenchmark(Benchmark):
                     trino_wall_time_seconds=cursor.stats["wallTimeMillis"] / 1000.0,
                     trino_elapsed_time_seconds=cursor.stats["elapsedTimeMillis"]
                     / 1000.0,
+                    is_warmup=is_warmup,
+                    cold_or_warm=cold_or_warm,
                 )
 
                 results.append(result)
